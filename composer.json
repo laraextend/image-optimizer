@@ -1,0 +1,63 @@
+{
+    "name": "laraexten/image-optimizer",
+    "description": "Automatische Bildoptimierung, Responsive-Varianten und Next-Gen-Formate (WebP, AVIF) für Laravel Blade — mit intelligentem Caching und Artisan-Commands.",
+    "keywords": [
+        "laravel",
+        "image",
+        "optimizer",
+        "webp",
+        "avif",
+        "responsive",
+        "picture",
+        "srcset",
+        "compression",
+        "blade",
+        "intervention",
+        "cache",
+        "performance"
+    ],
+    "homepage": "https://github.com/laraexten/image-optimizer",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Arash Saffari"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^10.0|^11.0|^12.0",
+        "illuminate/console": "^10.0|^11.0|^12.0",
+        "illuminate/filesystem": "^10.0|^11.0|^12.0",
+        "intervention/image": "^3.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.5|^9.0|^10.0",
+        "phpunit/phpunit": "^10.1|^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Laraexten\\ImageOptimizer\\": "src/"
+        },
+        "files": [
+            "src/Helpers/img_helper.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+        "Laraexten\\ImageOptimizer\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Laraexten\\ImageOptimizer\\ImageOptimizerServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
