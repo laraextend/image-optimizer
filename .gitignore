@@ -1,0 +1,12 @@
+build
+composer.lock
+docs
+vendor
+.php_cs.cache
+.php-cs-fixer.cache
+*.DS_Store
+**/.DS_Store
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
