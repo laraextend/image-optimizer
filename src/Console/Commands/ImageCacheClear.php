@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Laraexten\ImageOptimizer\Console\Commands;
 
-use App\Helpers\ImageOptimizer;
+use Laraexten\ImageOptimizer\Helpers\ImageOptimizer;
 use Illuminate\Console\Command;
 
 class ImageCacheClear extends Command

@@ -1,11 +1,11 @@
 <?php
 
-namespace XXXX\XXXX;
+namespace Laraexten\ImageOptimizer;
 
-use App\Helpers\ImageOptimizer;
+use Laraexten\ImageOptimizer\Helpers\ImageOptimizer;
 use Illuminate\Support\ServiceProvider;
 
-class CoreServiceProvider extends ServiceProvider
+class ImageOptimizerServiceProvider extends ServiceProvider
 {
     /**
      * Register services.

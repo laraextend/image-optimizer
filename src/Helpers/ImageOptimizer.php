@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Helpers;
+namespace Laraexten\ImageOptimizer\Helpers;
 
 use Illuminate\Support\Facades\File;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
