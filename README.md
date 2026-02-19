@@ -1,8 +1,4 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/laraexten/image-optimizer/main/art/banner.png" alt="laraexten/image-optimizer" width="100%">
-</p>
-
-<p align="center">
   <a href="https://packagist.org/packages/laraexten/image-optimizer"><img src="https://img.shields.io/packagist/v/laraexten/image-optimizer.svg?style=flat-square" alt="Latest Version on Packagist"></a>
   <a href="https://packagist.org/packages/laraexten/image-optimizer"><img src="https://img.shields.io/packagist/dt/laraexten/image-optimizer.svg?style=flat-square" alt="Total Downloads"></a>
   <a href="https://packagist.org/packages/laraexten/image-optimizer"><img src="https://img.shields.io/packagist/php-v/laraexten/image-optimizer.svg?style=flat-square" alt="PHP Version"></a>
