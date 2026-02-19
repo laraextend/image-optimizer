@@ -1,4 +1,4 @@
-<![CDATA[<p align="center">
+<p align="center">
   <img src="https://raw.githubusercontent.com/laraexten/image-optimizer/main/art/banner.png" alt="laraexten/image-optimizer" width="100%">
 </p>
 
@@ -566,4 +566,3 @@ MIT License. See [LICENSE](LICENSE.md) for details.
 <p align="center">
   Made with ❤️ by <a href="https://github.com/laraexten">LaraExten</a>
 </p>
-]]>
