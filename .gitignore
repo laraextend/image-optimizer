@@ -12,3 +12,4 @@ ehthumbs.db
 Desktop.ini
 .claude/worktrees/heuristic-wilson/
 .phpunit.cache/
+.phpunit.cache/test-results
