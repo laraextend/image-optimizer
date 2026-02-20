@@ -1,10 +1,17 @@
 <?php
 
+<<<<<<< Updated upstream
 namespace Laraexten\ImageOptimizer\Components;
 
 use Illuminate\View\ComponentAttributeBag;
 use Illuminate\View\Component;
 use Laraexten\ImageOptimizer\Helpers\ImageOptimizer;
+=======
+namespace Laraextend\ImageOptimizer\Components;
+
+use Illuminate\View\Component;
+use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
+>>>>>>> Stashed changes
 
 class Picture extends Component
 {
@@ -49,6 +56,7 @@ class Picture extends Component
             id: $this->id,
             original: $this->original,
             attributes: $this->extraAttributes,
+<<<<<<< Updated upstream
             pictureAttributes: $this->resolvePictureAttributes(),
         );
     }
@@ -60,3 +68,8 @@ class Picture extends Component
             : [];
     }
 }
+=======
+        );
+    }
+}
+>>>>>>> Stashed changes

@@ -1,6 +1,6 @@
 <?php
 
-use Laraexten\ImageOptimizer\Helpers\ImageOptimizer;
+use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
 
 // ─────────────────────────────────────────────────────────────
 //  img() - Single optimized image, WITHOUT srcset

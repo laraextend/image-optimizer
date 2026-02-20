@@ -1,10 +1,15 @@
 <?php
 
-namespace Laraexten\ImageOptimizer\Tests;
+namespace Laraextend\ImageOptimizer\Tests;
 
+<<<<<<< Updated upstream
 <<<<<<< HEAD
 use Laraexten\ImageOptimizer\Helpers\ImageOptimizer;
 use Laraexten\ImageOptimizer\ImageOptimizerServiceProvider;
+=======
+use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
+use Laraextend\ImageOptimizer\ImageOptimizerServiceProvider;
+>>>>>>> Stashed changes
 use Illuminate\Support\Facades\File;
 =======
 use Laraexten\ImageOptimizer\ImageOptimizerServiceProvider;

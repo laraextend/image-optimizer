@@ -1,10 +1,17 @@
 <?php
 
+<<<<<<< Updated upstream
 namespace Laraexten\ImageOptimizer\Components;
 
 use Illuminate\View\ComponentAttributeBag;
 use Illuminate\View\Component;
 use Laraexten\ImageOptimizer\Helpers\ImageOptimizer;
+=======
+namespace Laraextend\ImageOptimizer\Components;
+
+use Illuminate\View\Component;
+use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
+>>>>>>> Stashed changes
 
 class ResponsiveImg extends Component
 {
@@ -37,6 +44,7 @@ class ResponsiveImg extends Component
             sizes: $this->sizes,
             id: $this->id,
             original: $this->original,
+<<<<<<< Updated upstream
             attributes: $this->resolveAttributes(),
         );
     }
@@ -50,3 +58,9 @@ class ResponsiveImg extends Component
         return array_replace($bladeAttributes, $this->extraAttributes);
     }
 }
+=======
+            attributes: $this->extraAttributes,
+        );
+    }
+}
+>>>>>>> Stashed changes

@@ -1,7 +1,7 @@
 <p align="center">
-  <a href="https://packagist.org/packages/laraexten/image-optimizer"><img src="https://img.shields.io/packagist/v/laraexten/image-optimizer.svg?style=flat-square" alt="Latest Version on Packagist"></a>
-  <a href="https://packagist.org/packages/laraexten/image-optimizer"><img src="https://img.shields.io/packagist/dt/laraexten/image-optimizer.svg?style=flat-square" alt="Total Downloads"></a>
-  <a href="https://packagist.org/packages/laraexten/image-optimizer"><img src="https://img.shields.io/packagist/php-v/laraexten/image-optimizer.svg?style=flat-square" alt="PHP Version"></a>
+  <a href="https://packagist.org/packages/laraextend/image-optimizer"><img src="https://img.shields.io/packagist/v/laraextend/image-optimizer.svg?style=flat-square" alt="Latest Version on Packagist"></a>
+  <a href="https://packagist.org/packages/laraextend/image-optimizer"><img src="https://img.shields.io/packagist/dt/laraextend/image-optimizer.svg?style=flat-square" alt="Total Downloads"></a>
+  <a href="https://packagist.org/packages/laraextend/image-optimizer"><img src="https://img.shields.io/packagist/php-v/laraextend/image-optimizer.svg?style=flat-square" alt="PHP Version"></a>
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square" alt="License"></a>
 </p>
 
@@ -9,7 +9,11 @@
 
 **Automatic image optimization, responsive variants and next-gen formats for Laravel — ready to use directly in Blade.**
 
+<<<<<<< Updated upstream
 `laraexten/image-optimizer` handles the heavy lifting for you: images are automatically resized, compressed, converted to modern formats (WebP, AVIF) and rendered as responsive `<img>` or `<picture>` tags. Comes with smart caching, Artisan commands, simple Blade helpers and Blade components.
+=======
+`laraextend/image-optimizer` handles the heavy lifting for you: images are automatically resized, compressed, converted to modern formats (WebP, AVIF) and rendered as responsive `<img>` or `<picture>` tags. Comes with smart caching, Artisan commands and simple Blade helpers.
+>>>>>>> Stashed changes
 
 ---
 
@@ -46,7 +50,7 @@
 ### 1. Install the package via Composer
 
 ```bash
-composer require laraexten/image-optimizer
+composer require laraextend/image-optimizer
 ```
 
 > The ServiceProvider is registered automatically via Laravel's Auto-Discovery.
@@ -738,7 +742,7 @@ Add the optimization directory to your `.gitignore` — variants are generated a
 Contributions are welcome! Please fork the repository, create your feature branch and submit a pull request.
 
 ```bash
-git clone https://github.com/laraexten/image-optimizer.git
+git clone https://github.com/laraextend/image-optimizer.git
 cd image-optimizer
 composer install
 ```
@@ -753,7 +757,7 @@ All notable changes are documented in the [CHANGELOG](CHANGELOG.md).
 
 ## 🔒 Security
 
-If you discover a security vulnerability, please send an email to [security@laraexten.dev](mailto:security@laraexten.dev) instead of creating a public issue.
+If you discover a security vulnerability, please send an email to [security@laraextend.dev](mailto:security@laraextend.dev) instead of creating a public issue.
 
 ---
 
@@ -764,5 +768,5 @@ MIT License. See [LICENSE](LICENSE.md) for details.
 ---
 
 <p align="center">
-  Made with ❤️ by <a href="https://github.com/laraexten">LaraExten</a>
+  Made with ❤️ by <a href="https://github.com/laraextend">LaraExtend</a>
 </p>

@@ -1,6 +1,6 @@
 <?php
 
-use Laraexten\ImageOptimizer\Helpers\ImageOptimizer;
+use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
 
 test('configured output directory and default format are used', function (): void {
     $this->setPackageConfig([

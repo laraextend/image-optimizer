@@ -1,8 +1,8 @@
 <?php
 
-namespace Laraexten\ImageOptimizer\Console\Commands;
+namespace Laraextend\ImageOptimizer\Console\Commands;
 
-use Laraexten\ImageOptimizer\Helpers\ImageOptimizer;
+use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
 use Illuminate\Console\Command;
 
 class ImageCacheWarm extends Command
