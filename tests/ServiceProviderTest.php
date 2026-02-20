@@ -1,49 +1,33 @@
 <?php
 
-namespace Laraexten\ImageOptimizer\Test;
+use Laraextend\ImageOptimizer\Components\Img;
+use Laraextend\ImageOptimizer\Components\ImgUrl;
+use Laraextend\ImageOptimizer\Components\Picture;
+use Laraextend\ImageOptimizer\Components\ResponsiveImg;
+use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
 
-use Illuminate\Support\Facades\Blade;
-use Laraexten\ImageOptimizer\Helpers\ImageOptimizer;
+test('image optimizer is registered as singleton', function (): void {
+    $instance1 = app(ImageOptimizer::class);
+    $instance2 = app(ImageOptimizer::class);
 
-class ServiceProviderTest extends TestCase
-{
-    public function test_image_optimizer_is_registered_as_singleton(): void
-    {
-        $instance1 = app(ImageOptimizer::class);
-        $instance2 = app(ImageOptimizer::class);
+    expect($instance1)->toBe($instance2);
+});
 
-        $this->assertSame($instance1, $instance2);
-    }
+test('config is merged from package', function (): void {
+    expect(config('image-optimizer'))->not->toBeNull();
+    expect(config('image-optimizer.quality'))->toBeArray();
+});
 
-    public function test_config_is_merged_from_package(): void
-    {
-        $this->assertNotNull(config('image-optimizer'));
-        $this->assertIsArray(config('image-optimizer.quality'));
-    }
+test('blade component namespace laraextend is registered', function (): void {
+    expect(class_exists(Img::class))->toBeTrue();
+    expect(class_exists(ResponsiveImg::class))->toBeTrue();
+    expect(class_exists(Picture::class))->toBeTrue();
+    expect(class_exists(ImgUrl::class))->toBeTrue();
+});
 
-    public function test_blade_component_namespace_is_registered(): void
-    {
-        // The component namespace 'laraexten' should be registered
-        // Verify by checking that the component class can be resolved
-        $this->assertTrue(
-            class_exists(\Laraexten\ImageOptimizer\Components\Img::class)
-        );
-        $this->assertTrue(
-            class_exists(\Laraexten\ImageOptimizer\Components\ResponsiveImg::class)
-        );
-        $this->assertTrue(
-            class_exists(\Laraexten\ImageOptimizer\Components\Picture::class)
-        );
-        $this->assertTrue(
-            class_exists(\Laraexten\ImageOptimizer\Components\ImgUrl::class)
-        );
-    }
-
-    public function test_helper_functions_are_available(): void
-    {
-        $this->assertTrue(function_exists('img'));
-        $this->assertTrue(function_exists('responsive_img'));
-        $this->assertTrue(function_exists('picture'));
-        $this->assertTrue(function_exists('img_url'));
-    }
-}
+test('helper functions are available', function (): void {
+    expect(function_exists('img'))->toBeTrue();
+    expect(function_exists('responsive_img'))->toBeTrue();
+    expect(function_exists('picture'))->toBeTrue();
+    expect(function_exists('img_url'))->toBeTrue();
+});

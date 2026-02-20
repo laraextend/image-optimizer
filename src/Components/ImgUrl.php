@@ -1,18 +1,10 @@
 <?php
 
-<<<<<<< Updated upstream
-namespace Laraexten\ImageOptimizer\Components;
-
-use Closure;
-use Illuminate\View\Component;
-use Laraexten\ImageOptimizer\Helpers\ImageOptimizer;
-=======
 namespace Laraextend\ImageOptimizer\Components;
 
 use Closure;
 use Illuminate\View\Component;
 use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
->>>>>>> Stashed changes
 
 class ImgUrl extends Component
 {

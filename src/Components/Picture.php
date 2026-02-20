@@ -1,17 +1,10 @@
 <?php
 
-<<<<<<< Updated upstream
-namespace Laraexten\ImageOptimizer\Components;
+namespace Laraextend\ImageOptimizer\Components;
 
 use Illuminate\View\ComponentAttributeBag;
 use Illuminate\View\Component;
-use Laraexten\ImageOptimizer\Helpers\ImageOptimizer;
-=======
-namespace Laraextend\ImageOptimizer\Components;
-
-use Illuminate\View\Component;
 use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
->>>>>>> Stashed changes
 
 class Picture extends Component
 {
@@ -56,11 +49,15 @@ class Picture extends Component
             id: $this->id,
             original: $this->original,
             attributes: $this->extraAttributes,
-<<<<<<< Updated upstream
             pictureAttributes: $this->resolvePictureAttributes(),
         );
     }
 
+    /**
+     * Forward the Blade attribute bag (wire:*, x-*, data-*, etc.) to the <picture> element.
+     * This is the outermost element, which is what Livewire and Alpine.js expect for directives
+     * like wire:key, x-bind, @click, etc.
+     */
     protected function resolvePictureAttributes(): array
     {
         return $this->attributes instanceof ComponentAttributeBag
@@ -68,8 +65,3 @@ class Picture extends Component
             : [];
     }
 }
-=======
-        );
-    }
-}
->>>>>>> Stashed changes

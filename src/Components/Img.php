@@ -1,17 +1,10 @@
 <?php
 
-<<<<<<< Updated upstream
-namespace Laraexten\ImageOptimizer\Components;
+namespace Laraextend\ImageOptimizer\Components;
 
 use Illuminate\View\ComponentAttributeBag;
 use Illuminate\View\Component;
-use Laraexten\ImageOptimizer\Helpers\ImageOptimizer;
-=======
-namespace Laraextend\ImageOptimizer\Components;
-
-use Illuminate\View\Component;
 use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
->>>>>>> Stashed changes
 
 class Img extends Component
 {
@@ -42,7 +35,6 @@ class Img extends Component
             fetchpriority: $this->fetchpriority,
             id: $this->id,
             original: $this->original,
-<<<<<<< Updated upstream
             attributes: $this->resolveAttributes(),
         );
     }
@@ -56,9 +48,3 @@ class Img extends Component
         return array_replace($bladeAttributes, $this->extraAttributes);
     }
 }
-=======
-            attributes: $this->extraAttributes,
-        );
-    }
-}
->>>>>>> Stashed changes

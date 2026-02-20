@@ -1,94 +1,79 @@
 <?php
 
-namespace Laraexten\ImageOptimizer\Test;
+use Laraextend\ImageOptimizer\Components\Img;
+use Laraextend\ImageOptimizer\Components\ImgUrl;
+use Laraextend\ImageOptimizer\Components\Picture;
+use Laraextend\ImageOptimizer\Components\ResponsiveImg;
 
-use Laraexten\ImageOptimizer\Components\Img;
-use Laraexten\ImageOptimizer\Components\ImgUrl;
-use Laraexten\ImageOptimizer\Components\Picture;
-use Laraexten\ImageOptimizer\Components\ResponsiveImg;
+test('img component has correct default values', function (): void {
+    $component = new Img(src: 'test.jpg');
 
-class ComponentTest extends TestCase
-{
-    public function test_img_component_has_correct_default_values(): void
-    {
-        $component = new Img(src: 'test.jpg');
+    expect($component->src)->toBe('test.jpg');
+    expect($component->alt)->toBe('');
+    expect($component->width)->toBeNull();
+    expect($component->height)->toBeNull();
+    expect($component->class)->toBe('');
+    expect($component->format)->toBe('webp');
+    expect($component->loading)->toBe('lazy');
+    expect($component->fetchpriority)->toBe('auto');
+    expect($component->id)->toBeNull();
+    expect($component->original)->toBeFalse();
+    expect($component->extraAttributes)->toBe([]);
+});
 
-        $this->assertSame('test.jpg', $component->src);
-        $this->assertSame('', $component->alt);
-        $this->assertNull($component->width);
-        $this->assertNull($component->height);
-        $this->assertSame('', $component->class);
-        $this->assertSame('webp', $component->format);
-        $this->assertSame('lazy', $component->loading);
-        $this->assertSame('auto', $component->fetchpriority);
-        $this->assertNull($component->id);
-        $this->assertFalse($component->original);
-        $this->assertSame([], $component->extraAttributes);
-    }
+test('responsive-img component has correct default values', function (): void {
+    $component = new ResponsiveImg(src: 'test.jpg');
 
-    public function test_responsive_img_component_has_correct_default_values(): void
-    {
-        $component = new ResponsiveImg(src: 'test.jpg');
+    expect($component->src)->toBe('test.jpg');
+    expect($component->sizes)->toBe('100vw');
+    expect($component->format)->toBe('webp');
+    expect($component->loading)->toBe('lazy');
+});
 
-        $this->assertSame('test.jpg', $component->src);
-        $this->assertSame('100vw', $component->sizes);
-        $this->assertSame('webp', $component->format);
-        $this->assertSame('lazy', $component->loading);
-    }
+test('picture component has correct default values', function (): void {
+    $component = new Picture(src: 'test.jpg');
 
-    public function test_picture_component_has_correct_default_values(): void
-    {
-        $component = new Picture(src: 'test.jpg');
+    expect($component->src)->toBe('test.jpg');
+    expect($component->formats)->toBe(['avif', 'webp']);
+    expect($component->fallbackFormat)->toBe('jpg');
+    expect($component->loading)->toBeNull();
+    expect($component->fetchpriority)->toBe('auto');
+    expect($component->imgClass)->toBe('');
+    expect($component->sourceClass)->toBe('');
+});
 
-        $this->assertSame('test.jpg', $component->src);
-        $this->assertSame(['avif', 'webp'], $component->formats);
-        $this->assertSame('jpg', $component->fallbackFormat);
-        $this->assertNull($component->loading);
-        $this->assertSame('auto', $component->fetchpriority);
-        $this->assertSame('', $component->imgClass);
-        $this->assertSame('', $component->sourceClass);
-    }
+test('img-url component has correct default values', function (): void {
+    $component = new ImgUrl(src: 'test.jpg');
 
-    public function test_img_url_component_has_correct_default_values(): void
-    {
-        $component = new ImgUrl(src: 'test.jpg');
+    expect($component->src)->toBe('test.jpg');
+    expect($component->width)->toBeNull();
+    expect($component->format)->toBe('webp');
+    expect($component->original)->toBeFalse();
+});
 
-        $this->assertSame('test.jpg', $component->src);
-        $this->assertNull($component->width);
-        $this->assertSame('webp', $component->format);
-        $this->assertFalse($component->original);
-    }
+test('img-url render returns a callable that produces empty string for missing file', function (): void {
+    $component = new ImgUrl(src: 'non-existent.jpg');
+    $result = $component->render();
 
-    public function test_img_url_render_returns_closure(): void
-    {
-        $component = new ImgUrl(src: 'non-existent.jpg');
-        $result = $component->render();
+    expect($result)->toBeCallable();
+    expect($result())->toBe('');
+});
 
-        $this->assertIsCallable($result);
-        // For a non-existent file, the URL should be an empty string
-        $this->assertSame('', $result());
-    }
+test('picture component resolves loading to null when fetchpriority is high', function (): void {
+    $component = new Picture(src: 'test.jpg', fetchpriority: 'high');
 
-    public function test_picture_component_resolves_loading_for_high_fetchpriority(): void
-    {
-        $component = new Picture(src: 'test.jpg', fetchpriority: 'high');
+    expect($component->fetchpriority)->toBe('high');
+    expect($component->loading)->toBeNull();
+});
 
-        // With fetchpriority=high and loading=null, render() should pass null to renderPicture
-        // which then resolves to 'eager'
-        $this->assertSame('high', $component->fetchpriority);
-        $this->assertNull($component->loading);
-    }
+test('img component accepts extra attributes', function (): void {
+    $component = new Img(
+        src: 'test.jpg',
+        extraAttributes: ['data-lightbox' => 'gallery', 'style' => 'border-radius: 8px'],
+    );
 
-    public function test_img_component_accepts_extra_attributes(): void
-    {
-        $component = new Img(
-            src: 'test.jpg',
-            extraAttributes: ['data-lightbox' => 'gallery', 'style' => 'border-radius: 8px'],
-        );
-
-        $this->assertSame(
-            ['data-lightbox' => 'gallery', 'style' => 'border-radius: 8px'],
-            $component->extraAttributes,
-        );
-    }
-}
+    expect($component->extraAttributes)->toBe([
+        'data-lightbox' => 'gallery',
+        'style' => 'border-radius: 8px',
+    ]);
+});

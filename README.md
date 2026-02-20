@@ -9,18 +9,14 @@
 
 **Automatic image optimization, responsive variants and next-gen formats for Laravel — ready to use directly in Blade.**
 
-<<<<<<< Updated upstream
-`laraexten/image-optimizer` handles the heavy lifting for you: images are automatically resized, compressed, converted to modern formats (WebP, AVIF) and rendered as responsive `<img>` or `<picture>` tags. Comes with smart caching, Artisan commands, simple Blade helpers and Blade components.
-=======
-`laraextend/image-optimizer` handles the heavy lifting for you: images are automatically resized, compressed, converted to modern formats (WebP, AVIF) and rendered as responsive `<img>` or `<picture>` tags. Comes with smart caching, Artisan commands and simple Blade helpers.
->>>>>>> Stashed changes
+`laraextend/image-optimizer` handles the heavy lifting for you: images are automatically resized, compressed, converted to modern formats (WebP, AVIF) and rendered as responsive `<img>` or `<picture>` tags. Comes with smart caching, Artisan commands, simple Blade helpers and Blade components.
 
 ---
 
 ## ✨ Features
 
 - **🖼️ Four Blade Helpers** — `img()`, `responsive_img()`, `picture()` and `img_url()` for every use case
-- **🧩 Four Blade Components** — `<x-laraexten::img>`, `<x-laraexten::responsive-img>`, `<x-laraexten::picture>`, `<x-laraexten::img-url>`
+- **🧩 Four Blade Components** — `<x-laraextend::img>`, `<x-laraextend::responsive-img>`, `<x-laraextend::picture>`, `<x-laraextend::img-url>`
 - **📐 Automatic Responsive Variants** — Generates 5 breakpoint sizes (0.5×, 0.75×, 1×, 1.5×, 2×) with `srcset`
 - **🎨 Next-Gen Formats** — WebP, AVIF, JPEG, PNG — with automatic fallback if the server lacks support
 - **⚡ Smart Caching** — Manifest-based cache with automatic invalidation when source files change
@@ -32,6 +28,7 @@
 - **🔄 GD & Imagick** — Automatic driver detection, uses whichever is available
 - **🏷️ Flexible HTML Attributes** — Custom classes, IDs and arbitrary attributes supported
 - **📁 Original Mode** — Serve images unmodified (without any processing) when needed
+- **⚡ Livewire & Alpine.js Ready** — Blade components forward `wire:*`, `x-*` and `data-*` attributes automatically
 
 ---
 
@@ -59,49 +56,43 @@ composer require laraextend/image-optimizer
 
 That's it. No config files, no migrations, no additional steps needed.
 
-<<<<<<< HEAD
 ### 3. Optional Configuration
 
 If you want to customize defaults, publish the config file:
-=======
-### Optional: Publish Config
->>>>>>> claude/heuristic-wilson
 
 ```bash
 php artisan vendor:publish --tag=image-optimizer-config
 ```
 
-<<<<<<< HEAD
-Published file:
-
-```php
-config/image-optimizer.php
-```
+Published file: `config/image-optimizer.php`
 
 Default config schema:
 
 ```php
 return [
-    'driver' => env('IMAGE_OPTIMIZER_DRIVER', 'auto'),
+    'driver'     => env('IMAGE_OPTIMIZER_DRIVER', 'auto'),
     'output_dir' => env('IMAGE_OPTIMIZER_OUTPUT_DIR', 'img/optimized'),
+
     'responsive' => [
         'size_factors' => [0.5, 0.75, 1.0, 1.5, 2.0],
-        'min_width' => 100,
+        'min_width'    => 100,
     ],
+
     'quality' => [
         'webp' => 80,
         'avif' => 65,
-        'jpg' => 82,
+        'jpg'  => 82,
         'jpeg' => 82,
-        'png' => 85,
+        'png'  => 85,
     ],
+
     'defaults' => [
-        'format' => 'webp',
+        'format'          => 'webp',
         'picture_formats' => ['avif', 'webp'],
         'fallback_format' => 'jpg',
-        'loading' => 'lazy',
-        'fetchpriority' => 'auto',
-        'sizes' => '100vw',
+        'loading'         => 'lazy',
+        'fetchpriority'   => 'auto',
+        'sizes'           => '100vw',
     ],
 ];
 ```
@@ -112,9 +103,6 @@ Example `.env` overrides:
 IMAGE_OPTIMIZER_DRIVER=auto
 IMAGE_OPTIMIZER_OUTPUT_DIR=img/optimized
 ```
-=======
-This creates `config/image-optimizer.php` in your Laravel project where you can customize quality settings, output directory, breakpoints and more.
->>>>>>> claude/heuristic-wilson
 
 ---
 
@@ -195,23 +183,6 @@ Generates an `<img>` with `srcset` and `sizes` — the browser automatically pic
 ) !!}
 ```
 
-**Output:**
-```html
-<img src="/img/optimized/f6e5d4c3b2a1/hero-800w.webp"
-     srcset="/img/optimized/f6e5d4c3b2a1/hero-400w.webp 400w,
-            /img/optimized/f6e5d4c3b2a1/hero-600w.webp 600w,
-            /img/optimized/f6e5d4c3b2a1/hero-800w.webp 800w,
-            /img/optimized/f6e5d4c3b2a1/hero-1200w.webp 1200w,
-            /img/optimized/f6e5d4c3b2a1/hero-1600w.webp 1600w"
-     sizes="(max-width: 768px) 100vw, 800px"
-     alt="Hero Banner"
-     loading="eager"
-     decoding="async"
-     fetchpriority="high"
-     width="800"
-     height="450">
-```
-
 **Additional Parameters (on top of `img()`):**
 
 | Parameter | Type | Default | Description |
@@ -238,40 +209,6 @@ Generates a `<picture>` element with a `<source>` for each modern format and an 
     class: 'hero-picture',
     imgClass: 'hero-img',
 ) !!}
-```
-
-**Output:**
-```html
-<picture class="hero-picture">
-    <source type="image/avif"
-            srcset="/img/optimized/.../hero-400w.avif 400w,
-                   /img/optimized/.../hero-600w.avif 600w,
-                   /img/optimized/.../hero-800w.avif 800w,
-                   /img/optimized/.../hero-1200w.avif 1200w,
-                   /img/optimized/.../hero-1600w.avif 1600w"
-            sizes="(max-width: 768px) 100vw, 800px">
-    <source type="image/webp"
-            srcset="/img/optimized/.../hero-400w.webp 400w,
-                   /img/optimized/.../hero-600w.webp 600w,
-                   /img/optimized/.../hero-800w.webp 800w,
-                   /img/optimized/.../hero-1200w.webp 1200w,
-                   /img/optimized/.../hero-1600w.webp 1600w"
-            sizes="(max-width: 768px) 100vw, 800px">
-    <img src="/img/optimized/.../hero-800w.jpg"
-         srcset="/img/optimized/.../hero-400w.jpg 400w,
-                /img/optimized/.../hero-600w.jpg 600w,
-                /img/optimized/.../hero-800w.jpg 800w,
-                /img/optimized/.../hero-1200w.jpg 1200w,
-                /img/optimized/.../hero-1600w.jpg 1600w"
-         sizes="(max-width: 768px) 100vw, 800px"
-         alt="Hero Banner"
-         loading="eager"
-         decoding="async"
-         fetchpriority="high"
-         width="800"
-         height="450"
-         class="hero-img">
-</picture>
 ```
 
 **Additional Parameters (on top of the previous ones):**
@@ -315,14 +252,14 @@ Returns only the URL of the optimized image — perfect for CSS backgrounds, OG 
 
 ## 🧩 Blade Components
 
-All four helpers are also available as Blade components under the `laraexten` namespace. They accept the same parameters as the helper functions.
+All four helpers are also available as Blade components under the `laraextend` namespace. They accept the same parameters as the helper functions.
 
-> **Note:** Because `attributes` is a reserved word in Blade components, use `extra-attributes` instead.
+> **Note:** Because `attributes` is a reserved word in Blade components, use `extra-attributes` to pass an explicit attribute array. Attributes placed directly on the component tag (e.g. `wire:key`, `data-*`) are forwarded automatically.
 
-### `<x-laraexten::img>` — Single Optimized Image
+### `<x-laraextend::img>` — Single Optimized Image
 
 ```blade
-<x-laraexten::img
+<x-laraextend::img
     src="resources/images/logo.png"
     alt="Company Logo"
     :width="200"
@@ -332,10 +269,10 @@ All four helpers are also available as Blade components under the `laraexten` na
 
 ---
 
-### `<x-laraexten::responsive-img>` — Responsive with srcset
+### `<x-laraextend::responsive-img>` — Responsive with srcset
 
 ```blade
-<x-laraexten::responsive-img
+<x-laraextend::responsive-img
     src="resources/images/hero.jpg"
     alt="Hero Banner"
     :width="800"
@@ -346,10 +283,10 @@ All four helpers are also available as Blade components under the `laraexten` na
 
 ---
 
-### `<x-laraexten::picture>` — Multi-Format with Fallback
+### `<x-laraextend::picture>` — Multi-Format with Fallback
 
 ```blade
-<x-laraexten::picture
+<x-laraextend::picture
     src="resources/images/hero.jpg"
     alt="Hero Banner"
     :width="800"
@@ -364,11 +301,70 @@ All four helpers are also available as Blade components under the `laraexten` na
 
 ---
 
-### `<x-laraexten::img-url>` — URL Only
+### `<x-laraextend::img-url>` — URL Only
 
 ```blade
-<div style="background-image: url('<x-laraexten::img-url src="resources/images/bg.jpg" :width="1920" />')">
+<div style="background-image: url('<x-laraextend::img-url src="resources/images/bg.jpg" :width="1920" />')">
 ```
+
+---
+
+## ⚡ Livewire & Alpine.js
+
+Blade components forward all attributes from the Blade attribute bag automatically — including `wire:*`, `x-*`, `@*` and `data-*`. You do **not** need `extra-attributes` for Livewire or Alpine directives.
+
+### Attribute routing
+
+| Component | Bag attributes applied to |
+|-----------|--------------------------|
+| `<x-laraextend::img>` | `<img>` |
+| `<x-laraextend::responsive-img>` | `<img>` |
+| `<x-laraextend::picture>` | `<picture>` (outermost element) |
+
+For `<picture>`, bag attributes land on the outer `<picture>` tag so that `wire:key` is placed on the correct element for Livewire DOM diffing. Use `extra-attributes` to pass additional attributes specifically to the inner `<img>`.
+
+### Examples
+
+```blade
+{{-- Livewire list — wire:key on <img> --}}
+@foreach ($images as $image)
+    <x-laraextend::img
+        :src="$image->path"
+        :alt="$image->title"
+        :width="400"
+        wire:key="image-{{ $image->id }}"
+    />
+@endforeach
+
+{{-- Livewire list — wire:key on <picture> (outermost) --}}
+@foreach ($images as $image)
+    <x-laraextend::picture
+        :src="$image->path"
+        :alt="$image->title"
+        :width="400"
+        wire:key="picture-{{ $image->id }}"
+    />
+@endforeach
+
+{{-- Alpine.js lazy-reveal --}}
+<x-laraextend::img
+    src="resources/images/hero.jpg"
+    alt="Hero"
+    :width="800"
+    x-show="visible"
+    x-transition
+/>
+
+{{-- wire:navigate for SPA-style page loads --}}
+<x-laraextend::img
+    src="resources/images/logo.png"
+    alt="Logo"
+    :width="180"
+    wire:navigate
+/>
+```
+
+> **Tip:** `wire:navigate` and similar boolean-like directives render as `wire:navigate=""`, which is valid HTML and works correctly with Livewire.
 
 ---
 
@@ -384,8 +380,17 @@ php artisan vendor:publish --tag=image-optimizer-config
 
 ```php
 return [
+    // Image processing driver: 'auto' (recommended), 'gd', or 'imagick'
+    'driver'     => env('IMAGE_OPTIMIZER_DRIVER', 'auto'),
+
     // Output directory relative to public/
-    'output_dir' => 'img/optimized',
+    'output_dir' => env('IMAGE_OPTIMIZER_OUTPUT_DIR', 'img/optimized'),
+
+    // Responsive breakpoints
+    'responsive' => [
+        'size_factors' => [0.5, 0.75, 1.0, 1.5, 2.0], // multipliers of the requested width
+        'min_width'    => 100,                           // skip variants narrower than this
+    ],
 
     // Image quality per format (1–100)
     'quality' => [
@@ -396,21 +401,15 @@ return [
         'png'  => 85,
     ],
 
-    // Responsive breakpoint multipliers
-    'size_factors' => [0.5, 0.75, 1.0, 1.5, 2.0],
-
-    // Minimum variant width in pixels
-    'min_width' => 100,
-
-    // Default formats
-    'default_format'  => 'webp',
-    'picture_formats' => ['avif', 'webp'],
-    'fallback_format' => 'jpg',
-
-    // Default HTML attributes
-    'loading'       => 'lazy',
-    'fetchpriority' => 'auto',
-    'sizes'         => '100vw',
+    // Default HTML attributes and format choices
+    'defaults' => [
+        'format'          => 'webp',
+        'picture_formats' => ['avif', 'webp'],
+        'fallback_format' => 'jpg',
+        'loading'         => 'lazy',
+        'fetchpriority'   => 'auto',
+        'sizes'           => '100vw',
+    ],
 ];
 ```
 
@@ -475,7 +474,7 @@ No need to worry — the package automatically selects the best available format
 
 ### Custom HTML Attributes
 
-Use the `attributes` parameter (helpers) or `:extra-attributes` (components) to add any HTML attributes:
+Use the `attributes` parameter (helpers) or pass attributes directly on components:
 
 ```blade
 {{-- Helper --}}
@@ -490,8 +489,17 @@ Use the `attributes` parameter (helpers) or `:extra-attributes` (components) to 
     ],
 ) !!}
 
-{{-- Component --}}
-<x-laraexten::img
+{{-- Component — direct attributes are forwarded automatically --}}
+<x-laraextend::img
+    src="resources/images/photo.jpg"
+    alt="Photo"
+    :width="600"
+    data-lightbox="gallery"
+    style="border-radius: 8px"
+/>
+
+{{-- Component — programmatic attribute arrays via extra-attributes --}}
+<x-laraextend::img
     src="resources/images/photo.jpg"
     alt="Photo"
     :width="600"
@@ -501,7 +509,7 @@ Use the `attributes` parameter (helpers) or `:extra-attributes` (components) to 
 
 ### Memory-Safe Fallback (GD)
 
-When using the GD driver, very large images can exceed PHP memory limits during optimization.  
+When using the GD driver, very large images can exceed PHP memory limits during optimization.
 In that case, the package automatically falls back to the copied original image instead of throwing a fatal error.
 
 Fallback output is marked on the rendered `<img>`:
@@ -527,7 +535,7 @@ php artisan img:clear
 ```
 
 ```
-✓ 42 cache entries cleared.
+✓ 42 cache entries deleted.
 ```
 
 ### Warm Cache
@@ -593,7 +601,6 @@ The `manifest.json` stores the **timestamp of the source file**. On every reques
 ### Hero Banner (Above the Fold)
 
 ```blade
-{{-- Helper --}}
 {!! picture(
     src: 'resources/views/pages/home/hero.jpg',
     alt: 'Welcome to our App',
@@ -607,7 +614,7 @@ The `manifest.json` stores the **timestamp of the source file**. On every reques
 ) !!}
 
 {{-- Component --}}
-<x-laraexten::picture
+<x-laraextend::picture
     src="resources/views/pages/home/hero.jpg"
     alt="Welcome to our App"
     :width="1200"
@@ -623,18 +630,7 @@ The `manifest.json` stores the **timestamp of the source file**. On every reques
 ### Product Image in a Card
 
 ```blade
-{{-- Helper --}}
-{!! responsive_img(
-    src: 'resources/images/products/' . $product->image,
-    alt: $product->name,
-    width: 400,
-    format: 'webp',
-    sizes: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 400px',
-    class: 'rounded-lg shadow-md',
-) !!}
-
-{{-- Component --}}
-<x-laraexten::responsive-img
+<x-laraextend::responsive-img
     :src="'resources/images/products/' . $product->image"
     :alt="$product->name"
     :width="400"
@@ -647,7 +643,7 @@ The `manifest.json` stores the **timestamp of the source file**. On every reques
 ### Logo (Fixed Size)
 
 ```blade
-<x-laraexten::img
+<x-laraextend::img
     src="resources/images/logo.png"
     alt="Company Logo"
     :width="180"
@@ -659,11 +655,7 @@ The `manifest.json` stores the **timestamp of the source file**. On every reques
 ### CSS Background with Optimized Image
 
 ```blade
-<section style="background-image: url('{{ img_url(
-    src: 'resources/images/bg-pattern.jpg',
-    width: 1920,
-    format: 'webp',
-) }}')">
+<section style="background-image: url('{{ img_url(src: 'resources/images/bg-pattern.jpg', width: 1920, format: 'webp') }}')">
     <h1>Welcome</h1>
 </section>
 ```
@@ -671,11 +663,7 @@ The `manifest.json` stores the **timestamp of the source file**. On every reques
 ### Open Graph & Social Media Meta Tags
 
 ```blade
-<meta property="og:image" content="{{ url(img_url(
-    src: 'resources/images/og-image.jpg',
-    width: 1200,
-    format: 'jpg',
-)) }}">
+<meta property="og:image" content="{{ url(img_url(src: 'resources/images/og-image.jpg', width: 1200, format: 'jpg')) }}">
 <meta property="og:image:width" content="1200">
 ```
 
@@ -695,6 +683,31 @@ The `manifest.json` stores the **timestamp of the source file**. On every reques
             'data-full' => img_url(src: $image->path, width: 1800, format: 'jpg'),
         ],
     ) !!}
+@endforeach
+```
+
+### Livewire Repeater
+
+```blade
+{{-- wire:key on <img> --}}
+@foreach ($items as $item)
+    <x-laraextend::img
+        :src="$item->image"
+        :alt="$item->name"
+        :width="300"
+        wire:key="item-{{ $item->id }}"
+        class="rounded"
+    />
+@endforeach
+
+{{-- wire:key on <picture> (outermost element) --}}
+@foreach ($items as $item)
+    <x-laraextend::picture
+        :src="$item->image"
+        :alt="$item->name"
+        :width="300"
+        wire:key="item-{{ $item->id }}"
+    />
 @endforeach
 ```
 
