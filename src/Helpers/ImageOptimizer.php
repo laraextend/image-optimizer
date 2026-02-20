@@ -17,22 +17,6 @@ class ImageOptimizer
     protected ImageManager $manager;
 
     /**
-     * Breakpoint multipliers relative to specified width.
-     */
-    protected const SIZE_FACTORS = [0.5, 0.75, 1.0, 1.5, 2.0];
-
-    /**
-     * Quality settings per format.
-     */
-    protected const QUALITY = [
-        'webp' => 80,
-        'avif' => 65,
-        'jpg' => 82,
-        'jpeg' => 82,
-        'png' => 85,
-    ];
-
-    /**
      * MIME-Types for <source type="...">
      */
     protected const MIME_TYPES = [
@@ -56,7 +40,7 @@ class ImageOptimizer
         $this->manager = new ImageManager($driver);
 
         $this->publicPath = public_path();
-        $this->outputDir = 'img/optimized';
+        $this->outputDir = config('image-optimizer.output_dir', 'img/optimized');
     }
 
     /**
@@ -383,7 +367,7 @@ class ImageOptimizer
 
         $variants = [];
         $baseName = pathinfo($sourcePath, PATHINFO_FILENAME);
-        $quality = self::QUALITY[$format] ?? 80;
+        $quality = config("image-optimizer.quality.{$format}", 80);
 
         foreach ($widths as $w) {
             $h = (int) round($w * $aspectRatio);
@@ -425,11 +409,13 @@ class ImageOptimizer
     protected function calculateWidths(int $baseWidth, int $originalWidth): array
     {
         $widths = [];
+        $sizeFactors = config('image-optimizer.size_factors', [0.5, 0.75, 1.0, 1.5, 2.0]);
+        $minWidth = config('image-optimizer.min_width', 100);
 
-        foreach (self::SIZE_FACTORS as $factor) {
+        foreach ($sizeFactors as $factor) {
             $w = (int) round($baseWidth * $factor);
 
-            if ($w > $originalWidth || $w < 100) {
+            if ($w > $originalWidth || $w < $minWidth) {
                 continue;
             }
 
