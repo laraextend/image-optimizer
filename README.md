@@ -31,7 +31,7 @@
 
 ## 📋 Requirements
 
-- **PHP** >= 8.1
+- **PHP** >= 8.2
 - **Laravel** >= 10.x
 - **Intervention Image** >= 3.0 (`intervention/image`)
 - **GD** or **Imagick** PHP extension
@@ -116,7 +116,7 @@ resources/images/logo.png
 storage/app/uploads/photo.jpg
 ```
 
-Optimized variants are automatically stored in `public/img/optimized/` and served from there.
+Optimized variants are automatically stored in `public/<output_dir>/` (default: `public/img/optimized/`) and served from there.
 
 ---
 
@@ -394,7 +394,7 @@ Possible `data-image-optimizer-reason` values:
 
 ### Clear Cache
 
-Deletes all optimized image variants from `public/img/optimized/`:
+Deletes all optimized image variants from `public/<output_dir>/` (default: `public/img/optimized/`):
 
 ```bash
 php artisan img:clear
@@ -432,7 +432,7 @@ php artisan img:warm     # Or: only regenerate outdated variants
 
 ## 💾 Caching — How It Works
 
-Each combination of source file + width + format + mode creates a **dedicated cache directory** in `public/img/optimized/`:
+Each combination of source file + width + format + mode creates a **dedicated cache directory** in `public/<output_dir>/` (default: `public/img/optimized/`):
 
 ```
 public/img/optimized/
@@ -588,7 +588,7 @@ The package automatically detects the available driver:
 
 ## 📂 .gitignore
 
-Add the optimization directory to your `.gitignore` — variants are generated automatically:
+Add the optimization directory to your `.gitignore` — variants are generated automatically (adjust if you changed `output_dir`):
 
 ```gitignore
 /public/img/optimized/
