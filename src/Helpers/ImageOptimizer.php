@@ -32,6 +32,32 @@ class ImageOptimizer
         'png' => 85,
     ];
 
+    protected const DEFAULT_DRIVER = 'auto';
+
+    protected const DEFAULT_OUTPUT_DIR = 'img/optimized';
+
+    protected const DEFAULT_MIN_WIDTH = 100;
+
+    protected const DEFAULT_FORMAT = 'webp';
+
+    protected const DEFAULT_PICTURE_FORMATS = ['avif', 'webp'];
+
+    protected const DEFAULT_FALLBACK_FORMAT = 'jpg';
+
+    protected const DEFAULT_LOADING = 'lazy';
+
+    protected const DEFAULT_FETCHPRIORITY = 'auto';
+
+    protected const DEFAULT_SIZES = '100vw';
+
+    protected const ALLOWED_DRIVERS = ['auto', 'gd', 'imagick'];
+
+    protected const ALLOWED_FORMATS = ['webp', 'avif', 'jpg', 'jpeg', 'png'];
+
+    protected const ALLOWED_LOADING = ['lazy', 'eager'];
+
+    protected const ALLOWED_FETCHPRIORITY = ['auto', 'high', 'low'];
+
     /**
      * MIME-Types for <source type="...">
      */
@@ -49,14 +75,50 @@ class ImageOptimizer
 
     protected string $driverName;
 
+    protected array $sizeFactors;
+
+    protected int $minWidth;
+
+    protected array $quality;
+
+    protected string $defaultFormat;
+
+    protected array $defaultPictureFormats;
+
+    protected string $defaultFallbackFormat;
+
+    protected string $defaultLoading;
+
+    protected string $defaultFetchpriority;
+
+    protected string $defaultSizes;
+
     public function __construct()
     {
-        $this->driverName = extension_loaded('imagick') ? 'imagick' : 'gd';
+        $config = config('image-optimizer', []);
+        if (! is_array($config)) {
+            $config = [];
+        }
+
+        $responsiveConfig = is_array($config['responsive'] ?? null) ? $config['responsive'] : [];
+        $qualityConfig = is_array($config['quality'] ?? null) ? $config['quality'] : [];
+        $defaultsConfig = is_array($config['defaults'] ?? null) ? $config['defaults'] : [];
+
+        $this->driverName = $this->resolveDriverName($config['driver'] ?? self::DEFAULT_DRIVER);
         $driver = $this->driverName === 'imagick' ? new ImagickDriver : new GdDriver;
         $this->manager = new ImageManager($driver);
 
         $this->publicPath = public_path();
-        $this->outputDir = 'img/optimized';
+        $this->outputDir = $this->normalizeOutputDir($config['output_dir'] ?? self::DEFAULT_OUTPUT_DIR);
+        $this->sizeFactors = $this->normalizeSizeFactors($responsiveConfig['size_factors'] ?? self::SIZE_FACTORS);
+        $this->minWidth = $this->normalizeMinWidth($responsiveConfig['min_width'] ?? self::DEFAULT_MIN_WIDTH);
+        $this->quality = $this->normalizeQualityMap($qualityConfig);
+        $this->defaultFormat = $this->normalizeFormat($defaultsConfig['format'] ?? self::DEFAULT_FORMAT, self::DEFAULT_FORMAT);
+        $this->defaultPictureFormats = $this->normalizeFormatsList($defaultsConfig['picture_formats'] ?? self::DEFAULT_PICTURE_FORMATS, self::DEFAULT_PICTURE_FORMATS);
+        $this->defaultFallbackFormat = $this->normalizeFormat($defaultsConfig['fallback_format'] ?? self::DEFAULT_FALLBACK_FORMAT, self::DEFAULT_FALLBACK_FORMAT);
+        $this->defaultLoading = $this->normalizeLoading($defaultsConfig['loading'] ?? self::DEFAULT_LOADING);
+        $this->defaultFetchpriority = $this->normalizeFetchpriority($defaultsConfig['fetchpriority'] ?? self::DEFAULT_FETCHPRIORITY);
+        $this->defaultSizes = $this->normalizeSizes($defaultsConfig['sizes'] ?? self::DEFAULT_SIZES);
     }
 
     /**
@@ -72,7 +134,11 @@ class ImageOptimizer
             }
             // Imagick: check if AVIF is in the list of supported formats
             if ($this->driverName === 'imagick') {
-                return in_array('AVIF', \Imagick::queryFormats('AVIF'));
+                if (! class_exists(\Imagick::class)) {
+                    return false;
+                }
+
+                return in_array('AVIF', \Imagick::queryFormats('AVIF'), true);
             }
 
             return false;
@@ -121,14 +187,17 @@ class ImageOptimizer
         ?int $width = null,
         ?int $height = null,
         string $class = '',
-        string $format = 'webp',
-        string $loading = 'lazy',
-        string $fetchpriority = 'auto',
+        ?string $format = null,
+        ?string $loading = null,
+        ?string $fetchpriority = null,
         ?string $id = null,
         bool $original = false,
         array $attributes = [],
     ): string {
         $sourcePath = base_path($src);
+        $resolvedFormat = $this->safeFormat($this->normalizeFormat($format, $this->defaultFormat));
+        $resolvedLoading = $this->normalizeLoading($loading ?? $this->defaultLoading);
+        $resolvedFetchpriority = $this->normalizeFetchpriority($fetchpriority ?? $this->defaultFetchpriority);
 
         if (! File::exists($sourcePath)) {
             return $this->error($src);
@@ -138,14 +207,13 @@ class ImageOptimizer
         if ($original) {
             $url = $this->copyOriginal($sourcePath);
 
-            return $this->buildSimpleImgTag($url, $alt, $width, $height, $class, $loading, $fetchpriority, $id, $attributes);
+            return $this->buildSimpleImgTag($url, $alt, $width, $height, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
         }
 
         $sourceModified = File::lastModified($sourcePath);
-        $format = $this->safeFormat(strtolower($format));
 
         // Generate ONLY ONE variant (exactly the desired width)
-        $variants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $format, singleOnly: true);
+        $variants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $resolvedFormat, singleOnly: true);
 
         if (empty($variants)) {
             return $this->error($src);
@@ -158,7 +226,7 @@ class ImageOptimizer
             $height = (int) round($width * ($variant['height'] / $variant['width']));
         }
 
-        return $this->buildSimpleImgTag($variant['url'], $alt, $width, $height, $class, $loading, $fetchpriority, $id, $attributes);
+        return $this->buildSimpleImgTag($variant['url'], $alt, $width, $height, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
     }
 
     /**
@@ -170,15 +238,19 @@ class ImageOptimizer
         ?int $width = null,
         ?int $height = null,
         string $class = '',
-        string $format = 'webp',
-        string $loading = 'lazy',
-        string $fetchpriority = 'auto',
-        string $sizes = '100vw',
+        ?string $format = null,
+        ?string $loading = null,
+        ?string $fetchpriority = null,
+        ?string $sizes = null,
         ?string $id = null,
         bool $original = false,
         array $attributes = [],
     ): string {
         $sourcePath = base_path($src);
+        $resolvedFormat = $this->safeFormat($this->normalizeFormat($format, $this->defaultFormat));
+        $resolvedLoading = $this->normalizeLoading($loading ?? $this->defaultLoading);
+        $resolvedFetchpriority = $this->normalizeFetchpriority($fetchpriority ?? $this->defaultFetchpriority);
+        $resolvedSizes = $this->normalizeSizes($sizes ?? $this->defaultSizes);
 
         if (! File::exists($sourcePath)) {
             return $this->error($src);
@@ -187,18 +259,17 @@ class ImageOptimizer
         if ($original) {
             $url = $this->copyOriginal($sourcePath);
 
-            return $this->buildSimpleImgTag($url, $alt, $width, $height, $class, $loading, $fetchpriority, $id, $attributes);
+            return $this->buildSimpleImgTag($url, $alt, $width, $height, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
         }
 
         $sourceModified = File::lastModified($sourcePath);
-        $format = $this->safeFormat(strtolower($format));
-        $variants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $format);
+        $variants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $resolvedFormat);
 
         if (empty($variants)) {
             return $this->error($src);
         }
 
-        return $this->buildResponsiveImgTag($variants, $alt, $width, $height, $class, $loading, $fetchpriority, $sizes, $id, $attributes);
+        return $this->buildResponsiveImgTag($variants, $alt, $width, $height, $class, $resolvedLoading, $resolvedFetchpriority, $resolvedSizes, $id, $attributes);
     }
 
     /**
@@ -219,17 +290,25 @@ class ImageOptimizer
         string $class = '',          // class for <picture>
         string $imgClass = '',       // class for <img>
         string $sourceClass = '',    // class for all <source> elements
-        array $formats = ['avif', 'webp'],
-        string $fallbackFormat = 'jpg',
-        ?string $loading = null,      // null = automatically decide
-        string $fetchpriority = 'auto',
-        string $sizes = '100vw',
+        ?array $formats = null,
+        ?string $fallbackFormat = null,
+        ?string $loading = null,
+        ?string $fetchpriority = null,
+        ?string $sizes = null,
         ?string $id = null,
         bool $original = false,
         array $attributes = [],
     ): string {
-        // Resolve loading: explicit > automatic from fetchpriority
-        $resolvedLoading = $loading ?? ($fetchpriority === 'high' ? 'eager' : 'lazy');
+        $resolvedFetchpriority = $this->normalizeFetchpriority($fetchpriority ?? $this->defaultFetchpriority);
+        $resolvedLoading = $this->normalizeLoading($loading ?? $this->defaultLoading);
+        $resolvedSizes = $this->normalizeSizes($sizes ?? $this->defaultSizes);
+        $resolvedFormats = $this->normalizeFormatsList($formats, $this->defaultPictureFormats);
+        $resolvedFallbackFormat = $this->safeFormat($this->normalizeFormat($fallbackFormat, $this->defaultFallbackFormat));
+
+        if ($resolvedFetchpriority === 'high' && $resolvedLoading === 'lazy') {
+            $resolvedLoading = 'eager';
+        }
+
         $sourcePath = base_path($src);
 
         if (! File::exists($sourcePath)) {
@@ -240,14 +319,14 @@ class ImageOptimizer
         if ($original) {
             $url = $this->copyOriginal($sourcePath);
 
-            return $this->buildSimpleImgTag($url, $alt, $width, $height, $class, $loading, $fetchpriority, $id, $attributes);
+            return $this->buildSimpleImgTag($url, $alt, $width, $height, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
         }
 
         $sourceModified = File::lastModified($sourcePath);
 
         // Variants per format - skip unsupported formats
         $formatVariants = [];
-        foreach ($formats as $fmt) {
+        foreach ($resolvedFormats as $fmt) {
             $fmt = strtolower($fmt);
             if (! $this->supportsFormat($fmt)) {
                 continue;
@@ -259,16 +338,15 @@ class ImageOptimizer
         }
 
         // Fallback (e.g. jpg for old browsers)
-        $fallbackFormat = $this->safeFormat(strtolower($fallbackFormat));
-        $fallbackVariants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $fallbackFormat);
+        $fallbackVariants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $resolvedFallbackFormat);
 
         if (empty($fallbackVariants) && empty($formatVariants)) {
             return $this->error($src);
         }
 
         return $this->buildPictureTag(
-            $formatVariants, $fallbackVariants, $fallbackFormat,
-            $alt, $width, $height, $class, $imgClass, $sourceClass, $resolvedLoading, $fetchpriority, $sizes, $id, $attributes,
+            $formatVariants, $fallbackVariants, $resolvedFallbackFormat,
+            $alt, $width, $height, $class, $imgClass, $sourceClass, $resolvedLoading, $resolvedFetchpriority, $resolvedSizes, $id, $attributes,
         );
     }
 
@@ -278,7 +356,7 @@ class ImageOptimizer
     public function url(
         string $src,
         ?int $width = null,
-        string $format = 'webp',
+        ?string $format = null,
         bool $original = false,
     ): string {
         $sourcePath = base_path($src);
@@ -292,8 +370,8 @@ class ImageOptimizer
         }
 
         $sourceModified = File::lastModified($sourcePath);
-        $format = $this->safeFormat(strtolower($format));
-        $variants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $format, singleOnly: true);
+        $resolvedFormat = $this->safeFormat($this->normalizeFormat($format, $this->defaultFormat));
+        $variants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $resolvedFormat, singleOnly: true);
 
         if (empty($variants)) {
             return '';
@@ -383,7 +461,7 @@ class ImageOptimizer
 
         $variants = [];
         $baseName = pathinfo($sourcePath, PATHINFO_FILENAME);
-        $quality = self::QUALITY[$format] ?? 80;
+        $quality = $this->quality[$format] ?? (self::QUALITY[$format] ?? 80);
 
         foreach ($widths as $w) {
             $h = (int) round($w * $aspectRatio);
@@ -426,10 +504,10 @@ class ImageOptimizer
     {
         $widths = [];
 
-        foreach (self::SIZE_FACTORS as $factor) {
+        foreach ($this->sizeFactors as $factor) {
             $w = (int) round($baseWidth * $factor);
 
-            if ($w > $originalWidth || $w < 100) {
+            if ($w > $originalWidth || $w < $this->minWidth) {
                 continue;
             }
 
@@ -700,6 +778,190 @@ class ImageOptimizer
         return $closest;
     }
 
+    protected function resolveDriverName(mixed $configuredDriver): string
+    {
+        $requested = is_string($configuredDriver) ? strtolower(trim($configuredDriver)) : self::DEFAULT_DRIVER;
+        if (! in_array($requested, self::ALLOWED_DRIVERS, true)) {
+            $requested = self::DEFAULT_DRIVER;
+        }
+
+        $hasImagick = extension_loaded('imagick');
+        $hasGd = extension_loaded('gd');
+
+        return match ($requested) {
+            'imagick' => $hasImagick ? 'imagick' : 'gd',
+            'gd' => $hasGd ? 'gd' : ($hasImagick ? 'imagick' : 'gd'),
+            default => $hasImagick ? 'imagick' : 'gd',
+        };
+    }
+
+    protected function normalizeOutputDir(mixed $outputDir): string
+    {
+        if (! is_string($outputDir)) {
+            return self::DEFAULT_OUTPUT_DIR;
+        }
+
+        $normalized = trim(str_replace('\\', '/', $outputDir));
+        $normalized = preg_replace('#/+#', '/', $normalized) ?? '';
+        $normalized = trim($normalized, '/');
+
+        if ($normalized === '' || str_contains($normalized, '..')) {
+            return self::DEFAULT_OUTPUT_DIR;
+        }
+
+        return $normalized;
+    }
+
+    protected function normalizeSizeFactors(mixed $sizeFactors): array
+    {
+        if (! is_array($sizeFactors)) {
+            return self::SIZE_FACTORS;
+        }
+
+        $normalized = [];
+
+        foreach ($sizeFactors as $factor) {
+            if (! is_numeric($factor)) {
+                continue;
+            }
+
+            $factor = (float) $factor;
+            if ($factor <= 0) {
+                continue;
+            }
+
+            $normalized[] = $factor;
+        }
+
+        $normalized = array_values(array_unique($normalized));
+        sort($normalized);
+
+        return $normalized === [] ? self::SIZE_FACTORS : $normalized;
+    }
+
+    protected function normalizeMinWidth(mixed $minWidth): int
+    {
+        if (! is_numeric($minWidth)) {
+            return self::DEFAULT_MIN_WIDTH;
+        }
+
+        $normalized = (int) $minWidth;
+
+        return $normalized > 0 ? $normalized : self::DEFAULT_MIN_WIDTH;
+    }
+
+    protected function normalizeQualityMap(mixed $qualityConfig): array
+    {
+        $quality = self::QUALITY;
+
+        if (! is_array($qualityConfig)) {
+            return $quality;
+        }
+
+        foreach ($quality as $format => $defaultQuality) {
+            $rawValue = $qualityConfig[$format] ?? null;
+            if (! is_numeric($rawValue)) {
+                continue;
+            }
+
+            $quality[$format] = max(1, min(100, (int) $rawValue));
+        }
+
+        if (isset($qualityConfig['jpg']) && ! isset($qualityConfig['jpeg'])) {
+            $quality['jpeg'] = $quality['jpg'];
+        }
+        if (isset($qualityConfig['jpeg']) && ! isset($qualityConfig['jpg'])) {
+            $quality['jpg'] = $quality['jpeg'];
+        }
+
+        return $quality;
+    }
+
+    protected function normalizeFormatsList(mixed $formats, array $fallback): array
+    {
+        $fallbackList = $this->sanitizeFormatsArray($fallback);
+        if ($fallbackList === []) {
+            $fallbackList = self::DEFAULT_PICTURE_FORMATS;
+        }
+
+        if (! is_array($formats)) {
+            return $fallbackList;
+        }
+
+        $normalized = $this->sanitizeFormatsArray($formats);
+
+        return $normalized === [] ? $fallbackList : $normalized;
+    }
+
+    protected function sanitizeFormatsArray(array $formats): array
+    {
+        $normalized = [];
+
+        foreach ($formats as $format) {
+            if (! is_string($format)) {
+                continue;
+            }
+
+            $format = strtolower(trim($format));
+            if (! in_array($format, self::ALLOWED_FORMATS, true)) {
+                continue;
+            }
+
+            $normalized[] = $format;
+        }
+
+        return array_values(array_unique($normalized));
+    }
+
+    protected function normalizeFormat(mixed $format, string $fallback): string
+    {
+        $fallback = strtolower(trim($fallback));
+        if (! in_array($fallback, self::ALLOWED_FORMATS, true)) {
+            $fallback = self::DEFAULT_FORMAT;
+        }
+
+        if (! is_string($format)) {
+            return $fallback;
+        }
+
+        $normalized = strtolower(trim($format));
+
+        return in_array($normalized, self::ALLOWED_FORMATS, true) ? $normalized : $fallback;
+    }
+
+    protected function normalizeLoading(mixed $loading): string
+    {
+        if (! is_string($loading)) {
+            return self::DEFAULT_LOADING;
+        }
+
+        $normalized = strtolower(trim($loading));
+
+        return in_array($normalized, self::ALLOWED_LOADING, true) ? $normalized : self::DEFAULT_LOADING;
+    }
+
+    protected function normalizeFetchpriority(mixed $fetchpriority): string
+    {
+        if (! is_string($fetchpriority)) {
+            return self::DEFAULT_FETCHPRIORITY;
+        }
+
+        $normalized = strtolower(trim($fetchpriority));
+
+        return in_array($normalized, self::ALLOWED_FETCHPRIORITY, true) ? $normalized : self::DEFAULT_FETCHPRIORITY;
+    }
+
+    protected function normalizeSizes(mixed $sizes): string
+    {
+        if (! is_string($sizes)) {
+            return self::DEFAULT_SIZES;
+        }
+
+        $normalized = trim($sizes);
+
+        return $normalized !== '' ? $normalized : self::DEFAULT_SIZES;
+    }
+
     protected function getCacheHash(string $sourcePath, ?int $width, string $format, bool $singleOnly = false): string
     {
         $key = implode('|', [
@@ -785,7 +1047,7 @@ class ImageOptimizer
                     $sourcePath,
                     $currentModified,
                     $manifest['display_width'] ?? null,
-                    $manifest['format'] ?? 'webp',
+                    $manifest['format'] ?? $this->defaultFormat,
                     $cacheDir,
                     $manifest['single_only'] ?? false,
                 );

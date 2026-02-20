@@ -52,6 +52,55 @@ composer require laraexten/image-optimizer
 
 That's it. No config files, no migrations, no additional steps needed.
 
+### 3. Optional Configuration
+
+If you want to customize defaults, publish the config file:
+
+```bash
+php artisan vendor:publish --tag=image-optimizer-config
+```
+
+Published file:
+
+```php
+config/image-optimizer.php
+```
+
+Default config schema:
+
+```php
+return [
+    'driver' => env('IMAGE_OPTIMIZER_DRIVER', 'auto'),
+    'output_dir' => env('IMAGE_OPTIMIZER_OUTPUT_DIR', 'img/optimized'),
+    'responsive' => [
+        'size_factors' => [0.5, 0.75, 1.0, 1.5, 2.0],
+        'min_width' => 100,
+    ],
+    'quality' => [
+        'webp' => 80,
+        'avif' => 65,
+        'jpg' => 82,
+        'jpeg' => 82,
+        'png' => 85,
+    ],
+    'defaults' => [
+        'format' => 'webp',
+        'picture_formats' => ['avif', 'webp'],
+        'fallback_format' => 'jpg',
+        'loading' => 'lazy',
+        'fetchpriority' => 'auto',
+        'sizes' => '100vw',
+    ],
+];
+```
+
+Example `.env` overrides:
+
+```dotenv
+IMAGE_OPTIMIZER_DRIVER=auto
+IMAGE_OPTIMIZER_OUTPUT_DIR=img/optimized
+```
+
 ---
 
 ## 📖 Usage

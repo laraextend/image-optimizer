@@ -29,9 +29,9 @@ if (! function_exists('img')) {
         ?int $width = null,
         ?int $height = null,
         string $class = '',
-        string $format = 'webp',
-        string $loading = 'lazy',
-        string $fetchpriority = 'auto',
+        ?string $format = null,
+        ?string $loading = null,
+        ?string $fetchpriority = null,
         ?string $id = null,
         bool $original = false,
         array $attributes = [],
@@ -75,10 +75,10 @@ if (! function_exists('responsive_img')) {
         ?int $width = null,
         ?int $height = null,
         string $class = '',
-        string $format = 'webp',
-        string $loading = 'lazy',
-        string $fetchpriority = 'auto',
-        string $sizes = '100vw',
+        ?string $format = null,
+        ?string $loading = null,
+        ?string $fetchpriority = null,
+        ?string $sizes = null,
         ?string $id = null,
         bool $original = false,
         array $attributes = [],
@@ -133,22 +133,15 @@ if (! function_exists('picture')) {
         string $class = '',              // class for <picture>
         string $imgClass = '',           // class for <img>
         string $sourceClass = '',        // class for <source>
-        array $formats = ['avif', 'webp'],
-        string $fallbackFormat = 'jpg',
-        ?string $loading = null,          // null = automatic from fetchpriority
-        string $fetchpriority = 'auto',
-        string $sizes = '100vw',
+        ?array $formats = null,
+        ?string $fallbackFormat = null,
+        ?string $loading = null,
+        ?string $fetchpriority = null,
+        ?string $sizes = null,
         ?string $id = null,
         bool $original = false,
         array $attributes = [],
     ): string {
-        // Wenn loading explizit 'lazy' aber fetchpriority 'high' → ignoriere loading
-        // Nur ein explizites loading='eager' oder loading='lazy' bei fetchpriority != 'high' wird respektiert
-        $resolvedLoading = match (true) {
-            $fetchpriority === 'high' && $loading !== 'eager' => null, // → renderPicture setzt 'eager'
-            default => $loading,
-        };
-
         return app(ImageOptimizer::class)->renderPicture(
             src: $src,
             alt: $alt,
@@ -159,7 +152,7 @@ if (! function_exists('picture')) {
             sourceClass: $sourceClass,
             formats: $formats,
             fallbackFormat: $fallbackFormat,
-            loading: $resolvedLoading,
+            loading: $loading,
             fetchpriority: $fetchpriority,
             sizes: $sizes,
             id: $id,
@@ -184,7 +177,7 @@ if (! function_exists('img_url')) {
     function img_url(
         string $src,
         ?int $width = null,
-        string $format = 'webp',
+        ?string $format = null,
         bool $original = false,
     ): string {
         return app(ImageOptimizer::class)->url(
