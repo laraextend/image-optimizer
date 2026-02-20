@@ -8,15 +8,15 @@ use Illuminate\Console\Command;
 class ImageCacheWarm extends Command
 {
     protected $signature = 'img:warm';
-    protected $description = 'Veraltete Bild-Varianten neu generieren';
+    protected $description = 'Regenerate outdated image variants';
 
     public function handle(ImageOptimizer $optimizer): int
     {
-        $this->info('Prüfe Cache auf veraltete Bilder...');
+        $this->info('Checking cache for outdated images...');
 
         $results = $optimizer->warmCache();
 
-        $this->info("✓ {$results['regenerated']} neu generiert, {$results['skipped']} aktuell.");
+        $this->info("✓ {$results['regenerated']} newly generated, {$results['skipped']} current.");
 
         foreach ($results['errors'] as $error) {
             $this->warn("⚠ {$error}");

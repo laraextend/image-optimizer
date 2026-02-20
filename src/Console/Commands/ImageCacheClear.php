@@ -8,12 +8,12 @@ use Illuminate\Console\Command;
 class ImageCacheClear extends Command
 {
     protected $signature = 'img:clear';
-    protected $description = 'Alle optimierten Bild-Varianten löschen';
+    protected $description = 'Delete all optimized image variants';
 
     public function handle(ImageOptimizer $optimizer): int
     {
         $count = $optimizer->clearCache();
-        $this->info("✓ {$count} Cache-Einträge gelöscht.");
+        $this->info("✓ {$count} cache entries deleted.");
 
         return self::SUCCESS;
     }

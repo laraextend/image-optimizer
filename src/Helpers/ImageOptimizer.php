@@ -17,12 +17,12 @@ class ImageOptimizer
     protected ImageManager $manager;
 
     /**
-     * Breakpoint-Multiplikatoren relativ zur angegebenen Breite.
+     * Breakpoint multipliers relative to specified width.
      */
     protected const SIZE_FACTORS = [0.5, 0.75, 1.0, 1.5, 2.0];
 
     /**
-     * Qualitäts-Einstellungen pro Format.
+     * Quality settings per format.
      */
     protected const QUALITY = [
         'webp' => 80,
@@ -33,7 +33,7 @@ class ImageOptimizer
     ];
 
     /**
-     * MIME-Types für <source type="...">
+     * MIME-Types for <source type="...">
      */
     protected const MIME_TYPES = [
         'webp' => 'image/webp',
@@ -60,7 +60,7 @@ class ImageOptimizer
     }
 
     /**
-     * Prüft ob ein Format vom aktuellen Treiber unterstützt wird.
+     * Checks if a format is supported by the current driver.
      */
     protected function supportsFormat(string $format): bool
     {
@@ -70,7 +70,7 @@ class ImageOptimizer
             if ($this->driverName === 'gd') {
                 return function_exists('imageavif');
             }
-            // Imagick: prüfen ob AVIF in der Liste der unterstützten Formate ist
+            // Imagick: check if AVIF is in the list of supported formats
             if ($this->driverName === 'imagick') {
                 return in_array('AVIF', \Imagick::queryFormats('AVIF'));
             }
@@ -86,12 +86,12 @@ class ImageOptimizer
             return true;
         }
 
-        // jpg, png → immer unterstützt
+        // jpg, png - always supported
         return true;
     }
 
     /**
-     * Wählt ein sicheres Fallback-Format wenn das gewünschte nicht unterstützt wird.
+     * Selects a safe fallback format if the desired one is not supported.
      */
     protected function safeFormat(string $format): string
     {
@@ -99,7 +99,7 @@ class ImageOptimizer
             return $format;
         }
 
-        // Fallback-Kette: avif → webp → jpg
+        // Fallback chain: avif → webp → jpg
         if ($format === 'avif' && $this->supportsFormat('webp')) {
             return 'webp';
         }
@@ -108,12 +108,12 @@ class ImageOptimizer
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  ÖFFENTLICHE API
+    //  PUBLIC API
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * img() — Einzelnes optimiertes Bild, OHNE srcset.
-     * Resize + Komprimierung, aber nur eine Datei.
+     * img() - Single optimized image, WITHOUT srcset.
+     * Resize + compression, but only one file.
      */
     public function renderSingle(
         string $src,
@@ -134,7 +134,7 @@ class ImageOptimizer
             return $this->error($src);
         }
 
-        // Original? → einfach nach public kopieren, kein Processing
+        // Original? → simply copy to public, no processing
         if ($original) {
             $url = $this->copyOriginal($sourcePath);
 
@@ -144,7 +144,7 @@ class ImageOptimizer
         $sourceModified = File::lastModified($sourcePath);
         $format = $this->safeFormat(strtolower($format));
 
-        // Nur EINE Variante erzeugen (exakt die gewünschte Breite)
+        // Generate ONLY ONE variant (exactly the desired width)
         $variants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $format, singleOnly: true);
 
         if (empty($variants)) {
@@ -153,7 +153,7 @@ class ImageOptimizer
 
         $variant = $this->findClosestVariant($variants, $width ?? $variants[0]['width']);
 
-        // Höhe berechnen falls nicht angegeben
+        // Calculate height if not specified
         if ($height === null && $width !== null && $variant) {
             $height = (int) round($width * ($variant['height'] / $variant['width']));
         }
@@ -162,7 +162,7 @@ class ImageOptimizer
     }
 
     /**
-     * responsive_img() — <img> mit srcset (bisheriges Verhalten).
+     * responsive_img() - <img> with srcset (responsive behavior).
      */
     public function renderResponsive(
         string $src,
@@ -202,9 +202,9 @@ class ImageOptimizer
     }
 
     /**
-     * picture() — <picture> mit mehreren <source> pro Format + Fallback <img>.
+     * picture() - <picture> with multiple <source> per format + fallback <img>.
      *
-     * Erzeugt:
+     * Generates:
      *   <picture>
      *     <source type="image/avif" srcset="...avif 225w, ...avif 450w" sizes="...">
      *     <source type="image/webp" srcset="...webp 225w, ...webp 450w" sizes="...">
@@ -216,19 +216,19 @@ class ImageOptimizer
         string $alt = '',
         ?int $width = null,
         ?int $height = null,
-        string $class = '',          // class für <picture>
-        string $imgClass = '',       // class für <img>
-        string $sourceClass = '',    // class für alle <source> Elemente
+        string $class = '',          // class for <picture>
+        string $imgClass = '',       // class for <img>
+        string $sourceClass = '',    // class for all <source> elements
         array $formats = ['avif', 'webp'],
         string $fallbackFormat = 'jpg',
-        ?string $loading = null,      // null = automatisch entscheiden
+        ?string $loading = null,      // null = automatically decide
         string $fetchpriority = 'auto',
         string $sizes = '100vw',
         ?string $id = null,
         bool $original = false,
         array $attributes = [],
     ): string {
-        // loading auflösen: explizit > automatisch aus fetchpriority
+        // Resolve loading: explicit > automatic from fetchpriority
         $resolvedLoading = $loading ?? ($fetchpriority === 'high' ? 'eager' : 'lazy');
         $sourcePath = base_path($src);
 
@@ -236,7 +236,7 @@ class ImageOptimizer
             return $this->error($src);
         }
 
-        // Original → kein <picture> nötig, einfaches <img>
+        // Original - no <picture> needed, simple <img>
         if ($original) {
             $url = $this->copyOriginal($sourcePath);
 
@@ -245,7 +245,7 @@ class ImageOptimizer
 
         $sourceModified = File::lastModified($sourcePath);
 
-        // Varianten pro Format — nicht-unterstützte Formate überspringen
+        // Variants per format - skip unsupported formats
         $formatVariants = [];
         foreach ($formats as $fmt) {
             $fmt = strtolower($fmt);
@@ -258,7 +258,7 @@ class ImageOptimizer
             }
         }
 
-        // Fallback (z.B. jpg für alte Browser)
+        // Fallback (e.g. jpg for old browsers)
         $fallbackFormat = $this->safeFormat(strtolower($fallbackFormat));
         $fallbackVariants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $fallbackFormat);
 
@@ -273,7 +273,7 @@ class ImageOptimizer
     }
 
     /**
-     * img_url() — Gibt nur die URL zurück.
+     * img_url() - Return only the URL.
      */
     public function url(
         string $src,
@@ -305,12 +305,12 @@ class ImageOptimizer
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  ORIGINAL-DATEI KOPIEREN (kein Processing)
+    //  COPY ORIGINAL FILE (no processing)
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * Kopiert die Originaldatei unverändert nach public/.
-     * Timestamp-Check vermeidet unnötiges Kopieren.
+     * Copies the original file unchanged to public/.
+     * Timestamp check avoids unnecessary copying.
      */
     protected function copyOriginal(string $sourcePath): string
     {
@@ -330,7 +330,7 @@ class ImageOptimizer
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  VARIANTEN-ERZEUGUNG + CACHING
+    //  VARIANT GENERATION + CACHING
     // ─────────────────────────────────────────────────────────────
 
     protected function getOrCreateVariants(
@@ -395,6 +395,8 @@ class ImageOptimizer
             $encoded = $resized->encode($this->getEncoder($format, $quality));
             $encoded->save($filePath);
 
+            // dd($urlPath);
+
             $variants[] = [
                 'url' => $urlPath,
                 'width' => $w,
@@ -453,7 +455,7 @@ class ImageOptimizer
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * Einfacher <img> OHNE srcset.
+     * Simple <img> WITHOUT srcset.
      */
     protected function buildSimpleImgTag(
         string $url,
@@ -497,7 +499,7 @@ class ImageOptimizer
     }
 
     /**
-     * <img> MIT srcset.
+     * <img> WITH srcset.
      */
     protected function buildResponsiveImgTag(
         array $variants,
@@ -553,7 +555,7 @@ class ImageOptimizer
     }
 
     /**
-     * <picture> mit <source> pro Format + Fallback <img>.
+     * <picture> with <source> per format + fallback <img>.
      */
     protected function buildPictureTag(
         array $formatVariants,
@@ -562,9 +564,9 @@ class ImageOptimizer
         string $alt,
         ?int $width,
         ?int $height,
-        string $class,        // class für <picture>
-        string $imgClass,     // class für <img>
-        string $sourceClass,  // class für <source>
+        string $class,        // class for <picture>
+        string $imgClass,     // class for <img>
+        string $sourceClass,  // class for <source>
         string $loading,
         string $fetchpriority,
         string $sizes,
@@ -576,7 +578,7 @@ class ImageOptimizer
             $height = $v ? (int) round($width * ($v['height'] / $v['width'])) : null;
         }
 
-        // <picture> öffnen
+        // Open <picture>
         $pictureAttrs = [];
         if ($class) {
             $pictureAttrs['class'] = $class;
@@ -641,7 +643,7 @@ class ImageOptimizer
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  HILFSMETHODEN
+    //  HELPER METHODS
     // ─────────────────────────────────────────────────────────────
 
     protected function buildSrcset(array $variants): string
@@ -656,6 +658,20 @@ class ImageOptimizer
 
     protected function renderTag(string $tag, array $attrs): string
     {
+
+        if (isset($attrs['src'])) {
+            $attrs["src"] = asset($attrs["src"]);
+        }
+
+        if (isset($attrs['srcset'])) {
+            $srcsetParts = explode(', ', $attrs['srcset']);
+            foreach ($srcsetParts as &$part) {
+                [$url, $descriptor] = explode(' ', $part);
+                $part = asset($url).' '.$descriptor;
+            }
+            $attrs['srcset'] = implode(', ', $srcsetParts);
+        }
+
         $html = "<{$tag}";
         foreach ($attrs as $key => $value) {
             if ($value === null || $value === '') {
@@ -710,14 +726,14 @@ class ImageOptimizer
     protected function error(string $src): string
     {
         if (app()->isLocal()) {
-            return "<!-- IMG FEHLER: Datei nicht gefunden: {$src} -->";
+            return "<!-- IMG ERROR: File not found: {$src} -->";
         }
 
         return '';
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  CACHE-VERWALTUNG
+    //  CACHE MANAGEMENT
     // ─────────────────────────────────────────────────────────────
 
     public function clearCache(): int
@@ -756,7 +772,7 @@ class ImageOptimizer
             $sourcePath = $manifest['source'] ?? null;
 
             if (! $sourcePath || ! File::exists($sourcePath)) {
-                $results['errors'][] = "Quelldatei nicht gefunden: {$sourcePath}";
+                $results['errors'][] = "Source file not found: {$sourcePath}";
 
                 continue;
             }

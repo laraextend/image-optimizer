@@ -3,12 +3,12 @@
 use Laraexten\ImageOptimizer\Helpers\ImageOptimizer;
 
 // ─────────────────────────────────────────────────────────────
-//  img() — Einzelnes optimiertes Bild, OHNE srcset
+//  img() - Single optimized image, WITHOUT srcset
 // ─────────────────────────────────────────────────────────────
 
 if (! function_exists('img')) {
     /**
-     * Optimiertes Einzelbild (resize + komprimiert, kein srcset).
+     * Optimized single image (resize + compressed, no srcset).
      *
      *   {!! img(
      *       src: 'resources/views/pages/home/logo.jpg',
@@ -20,7 +20,7 @@ if (! function_exists('img')) {
      *   {!! img(
      *       src: 'resources/views/pages/home/logo.png',
      *       alt: 'Logo',
-     *       original: true,   // ← Originaldatei, kein Processing
+     *       original: true,   // ← Original file, no processing
      *   ) !!}
      */
     function img(
@@ -53,12 +53,12 @@ if (! function_exists('img')) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  responsive_img() — <img> mit srcset (responsive)
+//  responsive_img() - <img> with srcset (responsive)
 // ─────────────────────────────────────────────────────────────
 
 if (! function_exists('responsive_img')) {
     /**
-     * Responsive <img> mit srcset + sizes.
+     * Responsive <img> with srcset + sizes.
      *
      *   {!! responsive_img(
      *       src: 'resources/views/pages/home/hero.jpg',
@@ -101,12 +101,12 @@ if (! function_exists('responsive_img')) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  picture() — <picture> mit mehreren Formaten
+//  picture() - <picture> with multiple formats
 // ─────────────────────────────────────────────────────────────
 
 if (! function_exists('picture')) {
     /**
-     * <picture> mit <source> pro Format + Fallback <img>.
+     * <picture> with <source> per format + fallback <img>.
      *
      *   {!! picture(
      *       src: 'resources/views/pages/home/hero.jpg',
@@ -118,7 +118,7 @@ if (! function_exists('picture')) {
      *       sizes: '(max-width: 768px) 100vw, 800px',
      *   ) !!}
      *
-     * Erzeugt:
+     * Generates:
      *   <picture>
      *     <source type="image/avif" srcset="...avif 400w, ...avif 600w, ...avif 800w" sizes="...">
      *     <source type="image/webp" srcset="...webp 400w, ...webp 600w, ...webp 800w" sizes="...">
@@ -130,12 +130,12 @@ if (! function_exists('picture')) {
         string $alt = '',
         ?int $width = null,
         ?int $height = null,
-        string $class = '',              // class für <picture>
-        string $imgClass = '',           // class für <img>
-        string $sourceClass = '',        // class für <source>
+        string $class = '',              // class for <picture>
+        string $imgClass = '',           // class for <img>
+        string $sourceClass = '',        // class for <source>
         array $formats = ['avif', 'webp'],
         string $fallbackFormat = 'jpg',
-        ?string $loading = null,          // null = automatisch aus fetchpriority
+        ?string $loading = null,          // null = automatic from fetchpriority
         string $fetchpriority = 'auto',
         string $sizes = '100vw',
         ?string $id = null,
@@ -170,16 +170,16 @@ if (! function_exists('picture')) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  img_url() — Nur die URL zurückgeben
+//  img_url() - Return only the URL
 // ─────────────────────────────────────────────────────────────
 
 if (! function_exists('img_url')) {
     /**
-     * Gibt nur die URL des optimierten Bildes zurück.
+     * Returns only the URL of the optimized image.
      *
      *   <div style="background-image: url('{{ img_url(src: '...', width: 800) }}')">
      *   <meta property="og:image" content="{{ img_url(src: '...', width: 1200, format: 'jpg') }}">
-     *   {{ img_url(src: '...', original: true) }}  ← Originaldatei-URL
+     *   {{ img_url(src: '...', original: true) }}  ← Original file URL
      */
     function img_url(
         string $src,

@@ -25,6 +25,6 @@ class ImageOptimizerServiceProvider extends ServiceProvider
     {
 
         // Globalen Helper registrieren
-        require_once app_path('Helpers/img_helper.php');
+        require_once __DIR__ . '/Helpers/img_helper.php';
     }
 }
