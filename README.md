@@ -9,17 +9,19 @@
 
 **Automatic image optimization, responsive variants and next-gen formats for Laravel — ready to use directly in Blade.**
 
-`laraexten/image-optimizer` handles the heavy lifting for you: images are automatically resized, compressed, converted to modern formats (WebP, AVIF) and rendered as responsive `<img>` or `<picture>` tags. Comes with smart caching, Artisan commands and simple Blade helpers.
+`laraexten/image-optimizer` handles the heavy lifting for you: images are automatically resized, compressed, converted to modern formats (WebP, AVIF) and rendered as responsive `<img>` or `<picture>` tags. Comes with smart caching, Artisan commands, simple Blade helpers and Blade components.
 
 ---
 
 ## ✨ Features
 
 - **🖼️ Four Blade Helpers** — `img()`, `responsive_img()`, `picture()` and `img_url()` for every use case
+- **🧩 Four Blade Components** — `<x-laraexten::img>`, `<x-laraexten::responsive-img>`, `<x-laraexten::picture>`, `<x-laraexten::img-url>`
 - **📐 Automatic Responsive Variants** — Generates 5 breakpoint sizes (0.5×, 0.75×, 1×, 1.5×, 2×) with `srcset`
 - **🎨 Next-Gen Formats** — WebP, AVIF, JPEG, PNG — with automatic fallback if the server lacks support
 - **⚡ Smart Caching** — Manifest-based cache with automatic invalidation when source files change
 - **🔧 Artisan Commands** — `img:clear` and `img:warm` for cache management
+- **⚙️ Configurable** — Publish `config/image-optimizer.php` to customize quality, formats, breakpoints and more
 - **🏎️ Performance-Optimized** — Lazy loading, `fetchpriority`, `decoding="async"` by default
 - **🛡️ Memory-Safe Fallback** — Automatically serves original images when GD memory would be exceeded
 - **📦 Zero Config** — Works immediately after installation, no configuration required
@@ -53,14 +55,19 @@ composer require laraexten/image-optimizer
 
 That's it. No config files, no migrations, no additional steps needed.
 
+<<<<<<< HEAD
 ### 3. Optional Configuration
 
 If you want to customize defaults, publish the config file:
+=======
+### Optional: Publish Config
+>>>>>>> claude/heuristic-wilson
 
 ```bash
 php artisan vendor:publish --tag=image-optimizer-config
 ```
 
+<<<<<<< HEAD
 Published file:
 
 ```php
@@ -101,6 +108,9 @@ Example `.env` overrides:
 IMAGE_OPTIMIZER_DRIVER=auto
 IMAGE_OPTIMIZER_OUTPUT_DIR=img/optimized
 ```
+=======
+This creates `config/image-optimizer.php` in your Laravel project where you can customize quality settings, output directory, breakpoints and more.
+>>>>>>> claude/heuristic-wilson
 
 ---
 
@@ -120,7 +130,7 @@ Optimized variants are automatically stored in `public/<output_dir>/` (default: 
 
 ---
 
-## 🖼️ The Four Blade Helpers
+## 🖼️ Blade Helpers
 
 ### 1. `img()` — Single Optimized Image
 
@@ -299,6 +309,109 @@ Returns only the URL of the optimized image — perfect for CSS backgrounds, OG 
 
 ---
 
+## 🧩 Blade Components
+
+All four helpers are also available as Blade components under the `laraexten` namespace. They accept the same parameters as the helper functions.
+
+> **Note:** Because `attributes` is a reserved word in Blade components, use `extra-attributes` instead.
+
+### `<x-laraexten::img>` — Single Optimized Image
+
+```blade
+<x-laraexten::img
+    src="resources/images/logo.png"
+    alt="Company Logo"
+    :width="200"
+    format="webp"
+/>
+```
+
+---
+
+### `<x-laraexten::responsive-img>` — Responsive with srcset
+
+```blade
+<x-laraexten::responsive-img
+    src="resources/images/hero.jpg"
+    alt="Hero Banner"
+    :width="800"
+    fetchpriority="high"
+    sizes="(max-width: 768px) 100vw, 800px"
+/>
+```
+
+---
+
+### `<x-laraexten::picture>` — Multi-Format with Fallback
+
+```blade
+<x-laraexten::picture
+    src="resources/images/hero.jpg"
+    alt="Hero Banner"
+    :width="800"
+    :formats="['avif', 'webp']"
+    fallback-format="jpg"
+    fetchpriority="high"
+    sizes="(max-width: 768px) 100vw, 800px"
+    class="hero-picture"
+    img-class="hero-img"
+/>
+```
+
+---
+
+### `<x-laraexten::img-url>` — URL Only
+
+```blade
+<div style="background-image: url('<x-laraexten::img-url src="resources/images/bg.jpg" :width="1920" />')">
+```
+
+---
+
+## ⚙️ Configuration
+
+After publishing the config file, you can customize all default values:
+
+```bash
+php artisan vendor:publish --tag=image-optimizer-config
+```
+
+**`config/image-optimizer.php`:**
+
+```php
+return [
+    // Output directory relative to public/
+    'output_dir' => 'img/optimized',
+
+    // Image quality per format (1–100)
+    'quality' => [
+        'webp' => 80,
+        'avif' => 65,
+        'jpg'  => 82,
+        'jpeg' => 82,
+        'png'  => 85,
+    ],
+
+    // Responsive breakpoint multipliers
+    'size_factors' => [0.5, 0.75, 1.0, 1.5, 2.0],
+
+    // Minimum variant width in pixels
+    'min_width' => 100,
+
+    // Default formats
+    'default_format'  => 'webp',
+    'picture_formats' => ['avif', 'webp'],
+    'fallback_format' => 'jpg',
+
+    // Default HTML attributes
+    'loading'       => 'lazy',
+    'fetchpriority' => 'auto',
+    'sizes'         => '100vw',
+];
+```
+
+---
+
 ## 📐 Responsive Variants — How It Works
 
 When you specify a `width` of e.g. `800`, the following variants are automatically generated:
@@ -358,9 +471,10 @@ No need to worry — the package automatically selects the best available format
 
 ### Custom HTML Attributes
 
-Use the `attributes` parameter to add any HTML attributes:
+Use the `attributes` parameter (helpers) or `:extra-attributes` (components) to add any HTML attributes:
 
 ```blade
+{{-- Helper --}}
 {!! img(
     src: 'resources/images/photo.jpg',
     alt: 'Photo',
@@ -371,6 +485,14 @@ Use the `attributes` parameter to add any HTML attributes:
         'style' => 'border-radius: 8px',
     ],
 ) !!}
+
+{{-- Component --}}
+<x-laraexten::img
+    src="resources/images/photo.jpg"
+    alt="Photo"
+    :width="600"
+    :extra-attributes="['data-lightbox' => 'gallery', 'style' => 'border-radius: 8px']"
+/>
 ```
 
 ### Memory-Safe Fallback (GD)
@@ -467,6 +589,7 @@ The `manifest.json` stores the **timestamp of the source file**. On every reques
 ### Hero Banner (Above the Fold)
 
 ```blade
+{{-- Helper --}}
 {!! picture(
     src: 'resources/views/pages/home/hero.jpg',
     alt: 'Welcome to our App',
@@ -478,11 +601,25 @@ The `manifest.json` stores the **timestamp of the source file**. On every reques
     class: 'w-full',
     imgClass: 'w-full h-auto object-cover',
 ) !!}
+
+{{-- Component --}}
+<x-laraexten::picture
+    src="resources/views/pages/home/hero.jpg"
+    alt="Welcome to our App"
+    :width="1200"
+    :formats="['avif', 'webp']"
+    fallback-format="jpg"
+    fetchpriority="high"
+    sizes="100vw"
+    class="w-full"
+    img-class="w-full h-auto object-cover"
+/>
 ```
 
 ### Product Image in a Card
 
 ```blade
+{{-- Helper --}}
 {!! responsive_img(
     src: 'resources/images/products/' . $product->image,
     alt: $product->name,
@@ -491,28 +628,28 @@ The `manifest.json` stores the **timestamp of the source file**. On every reques
     sizes: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 400px',
     class: 'rounded-lg shadow-md',
 ) !!}
+
+{{-- Component --}}
+<x-laraexten::responsive-img
+    :src="'resources/images/products/' . $product->image"
+    :alt="$product->name"
+    :width="400"
+    format="webp"
+    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 400px"
+    class="rounded-lg shadow-md"
+/>
 ```
 
 ### Logo (Fixed Size)
 
 ```blade
-{!! img(
-    src: 'resources/images/logo.png',
-    alt: 'Company Logo',
-    width: 180,
-    format: 'webp',
-    loading: 'eager',
-) !!}
-```
-
-### Favicon / Icon (Original Without Processing)
-
-```blade
-{!! img(
-    src: 'resources/images/favicon.svg',
-    alt: '',
-    original: true,
-) !!}
+<x-laraexten::img
+    src="resources/images/logo.png"
+    alt="Company Logo"
+    :width="180"
+    format="webp"
+    loading="eager"
+/>
 ```
 
 ### CSS Background with Optimized Image

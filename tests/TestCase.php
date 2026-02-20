@@ -2,13 +2,18 @@
 
 namespace Laraexten\ImageOptimizer\Tests;
 
+<<<<<<< HEAD
 use Laraexten\ImageOptimizer\Helpers\ImageOptimizer;
 use Laraexten\ImageOptimizer\ImageOptimizerServiceProvider;
 use Illuminate\Support\Facades\File;
+=======
+use Laraexten\ImageOptimizer\ImageOptimizerServiceProvider;
+>>>>>>> claude/heuristic-wilson
 use Orchestra\Testbench\TestCase as OrchestraTestCase;
 
 abstract class TestCase extends OrchestraTestCase
 {
+<<<<<<< HEAD
     protected string $fixturesRoot = 'tests/fixtures/image-optimizer';
 
     protected string $landscapeImage = 'tests/fixtures/image-optimizer/landscape.jpg';
@@ -17,12 +22,15 @@ abstract class TestCase extends OrchestraTestCase
 
     protected string $squareImage = 'tests/fixtures/image-optimizer/square.jpg';
 
+=======
+>>>>>>> claude/heuristic-wilson
     protected function getPackageProviders($app): array
     {
         return [
             ImageOptimizerServiceProvider::class,
         ];
     }
+<<<<<<< HEAD
 
     protected function getEnvironmentSetUp($app): void
     {
@@ -124,4 +132,6 @@ abstract class TestCase extends OrchestraTestCase
         $absolute = public_path(ltrim($path, '/'));
         $this->assertFileExists($absolute);
     }
+=======
+>>>>>>> claude/heuristic-wilson
 }

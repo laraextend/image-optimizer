@@ -18,6 +18,7 @@ class ImageOptimizer
     protected ImageManager $manager;
 
     /**
+<<<<<<< HEAD
      * Breakpoint multipliers relative to specified width.
      */
     protected const SIZE_FACTORS = [0.5, 0.75, 1.0, 1.5, 2.0];
@@ -60,6 +61,8 @@ class ImageOptimizer
     protected const ALLOWED_FETCHPRIORITY = ['auto', 'high', 'low'];
 
     /**
+=======
+>>>>>>> claude/heuristic-wilson
      * MIME-Types for <source type="...">
      */
     protected const MIME_TYPES = [
@@ -110,6 +113,7 @@ class ImageOptimizer
         $this->manager = new ImageManager($driver);
 
         $this->publicPath = public_path();
+<<<<<<< HEAD
         $this->outputDir = $this->normalizeOutputDir($config['output_dir'] ?? self::DEFAULT_OUTPUT_DIR);
         $this->sizeFactors = $this->normalizeSizeFactors($responsiveConfig['size_factors'] ?? self::SIZE_FACTORS);
         $this->minWidth = $this->normalizeMinWidth($responsiveConfig['min_width'] ?? self::DEFAULT_MIN_WIDTH);
@@ -120,6 +124,9 @@ class ImageOptimizer
         $this->defaultLoading = $this->normalizeLoading($defaultsConfig['loading'] ?? self::DEFAULT_LOADING);
         $this->defaultFetchpriority = $this->normalizeFetchpriority($defaultsConfig['fetchpriority'] ?? self::DEFAULT_FETCHPRIORITY);
         $this->defaultSizes = $this->normalizeSizes($defaultsConfig['sizes'] ?? self::DEFAULT_SIZES);
+=======
+        $this->outputDir = config('image-optimizer.output_dir', 'img/optimized');
+>>>>>>> claude/heuristic-wilson
     }
 
     /**
@@ -523,7 +530,11 @@ class ImageOptimizer
 
         $variants = [];
         $baseName = pathinfo($sourcePath, PATHINFO_FILENAME);
+<<<<<<< HEAD
         $quality = $this->quality[$format] ?? (self::QUALITY[$format] ?? 80);
+=======
+        $quality = config("image-optimizer.quality.{$format}", 80);
+>>>>>>> claude/heuristic-wilson
 
         foreach ($widths as $w) {
             $h = (int) round($w * $aspectRatio);
@@ -565,11 +576,20 @@ class ImageOptimizer
     protected function calculateWidths(int $baseWidth, int $originalWidth): array
     {
         $widths = [];
+        $sizeFactors = config('image-optimizer.size_factors', [0.5, 0.75, 1.0, 1.5, 2.0]);
+        $minWidth = config('image-optimizer.min_width', 100);
 
+<<<<<<< HEAD
         foreach ($this->sizeFactors as $factor) {
             $w = (int) round($baseWidth * $factor);
 
             if ($w > $originalWidth || $w < $this->minWidth) {
+=======
+        foreach ($sizeFactors as $factor) {
+            $w = (int) round($baseWidth * $factor);
+
+            if ($w > $originalWidth || $w < $minWidth) {
+>>>>>>> claude/heuristic-wilson
                 continue;
             }
 
