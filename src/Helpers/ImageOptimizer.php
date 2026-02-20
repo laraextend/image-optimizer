@@ -11,6 +11,7 @@ use Intervention\Image\Encoders\PngEncoder;
 use Intervention\Image\Encoders\WebpEncoder;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Interfaces\EncoderInterface;
+use Throwable;
 
 class ImageOptimizer
 {
@@ -203,6 +204,8 @@ class ImageOptimizer
             return $this->error($src);
         }
 
+        [$width, $height] = $this->resolveDimensions($sourcePath, $width, $height);
+
         // Original? → simply copy to public, no processing
         if ($original) {
             $url = $this->copyOriginal($sourcePath);
@@ -210,10 +213,24 @@ class ImageOptimizer
             return $this->buildSimpleImgTag($url, $alt, $width, $height, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
         }
 
+        if ($this->shouldBypassOptimization($sourcePath, $width, $height)) {
+            $url = $this->copyOriginal($sourcePath);
+            $attributes = $this->withFallbackMetadata($attributes, 'memory-limit');
+
+            return $this->buildSimpleImgTag($url, $alt, $width, $height, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
+        }
+
         $sourceModified = File::lastModified($sourcePath);
 
         // Generate ONLY ONE variant (exactly the desired width)
-        $variants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $resolvedFormat, singleOnly: true);
+        try {
+            $variants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $resolvedFormat, singleOnly: true);
+        } catch (Throwable) {
+            $url = $this->copyOriginal($sourcePath);
+            $attributes = $this->withFallbackMetadata($attributes, 'optimization-error');
+
+            return $this->buildSimpleImgTag($url, $alt, $width, $height, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
+        }
 
         if (empty($variants)) {
             return $this->error($src);
@@ -256,14 +273,30 @@ class ImageOptimizer
             return $this->error($src);
         }
 
+        [$width, $height] = $this->resolveDimensions($sourcePath, $width, $height);
+
         if ($original) {
             $url = $this->copyOriginal($sourcePath);
 
             return $this->buildSimpleImgTag($url, $alt, $width, $height, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
         }
 
+        if ($this->shouldBypassOptimization($sourcePath, $width, $height)) {
+            $url = $this->copyOriginal($sourcePath);
+            $attributes = $this->withFallbackMetadata($attributes, 'memory-limit');
+
+            return $this->buildSimpleImgTag($url, $alt, $width, $height, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
+        }
+
         $sourceModified = File::lastModified($sourcePath);
-        $variants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $resolvedFormat);
+        try {
+            $variants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $resolvedFormat);
+        } catch (Throwable) {
+            $url = $this->copyOriginal($sourcePath);
+            $attributes = $this->withFallbackMetadata($attributes, 'optimization-error');
+
+            return $this->buildSimpleImgTag($url, $alt, $width, $height, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
+        }
 
         if (empty($variants)) {
             return $this->error($src);
@@ -315,11 +348,20 @@ class ImageOptimizer
             return $this->error($src);
         }
 
+        [$width, $height] = $this->resolveDimensions($sourcePath, $width, $height);
+
         // Original - no <picture> needed, simple <img>
         if ($original) {
             $url = $this->copyOriginal($sourcePath);
 
             return $this->buildSimpleImgTag($url, $alt, $width, $height, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
+        }
+
+        if ($this->shouldBypassOptimization($sourcePath, $width, $height)) {
+            $url = $this->copyOriginal($sourcePath);
+            $attributes = $this->withFallbackMetadata($attributes, 'memory-limit');
+
+            return $this->buildSimpleImgTag($url, $alt, $width, $height, $imgClass ?: $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
         }
 
         $sourceModified = File::lastModified($sourcePath);
@@ -331,14 +373,25 @@ class ImageOptimizer
             if (! $this->supportsFormat($fmt)) {
                 continue;
             }
-            $variants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $fmt);
+            try {
+                $variants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $fmt);
+            } catch (Throwable) {
+                continue;
+            }
             if (! empty($variants)) {
                 $formatVariants[$fmt] = $variants;
             }
         }
 
         // Fallback (e.g. jpg for old browsers)
-        $fallbackVariants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $resolvedFallbackFormat);
+        try {
+            $fallbackVariants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $resolvedFallbackFormat);
+        } catch (Throwable) {
+            $url = $this->copyOriginal($sourcePath);
+            $attributes = $this->withFallbackMetadata($attributes, 'optimization-error');
+
+            return $this->buildSimpleImgTag($url, $alt, $width, $height, $imgClass ?: $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
+        }
 
         if (empty($fallbackVariants) && empty($formatVariants)) {
             return $this->error($src);
@@ -369,15 +422,24 @@ class ImageOptimizer
             return $this->copyOriginal($sourcePath);
         }
 
+        [$resolvedWidth, $resolvedHeight] = $this->resolveDimensions($sourcePath, $width, null);
+        if ($this->shouldBypassOptimization($sourcePath, $resolvedWidth, $resolvedHeight)) {
+            return $this->copyOriginal($sourcePath);
+        }
+
         $sourceModified = File::lastModified($sourcePath);
         $resolvedFormat = $this->safeFormat($this->normalizeFormat($format, $this->defaultFormat));
-        $variants = $this->getOrCreateVariants($sourcePath, $sourceModified, $width, $resolvedFormat, singleOnly: true);
+        try {
+            $variants = $this->getOrCreateVariants($sourcePath, $sourceModified, $resolvedWidth, $resolvedFormat, singleOnly: true);
+        } catch (Throwable) {
+            return $this->copyOriginal($sourcePath);
+        }
 
         if (empty($variants)) {
             return '';
         }
 
-        $targetWidth = $width ?? $variants[0]['width'];
+        $targetWidth = $resolvedWidth ?? $variants[0]['width'];
 
         return $this->findClosestVariant($variants, $targetWidth)['url'] ?? '';
     }
@@ -776,6 +838,145 @@ class ImageOptimizer
         }
 
         return $closest;
+    }
+
+    /**
+     * Resolve requested dimensions while preserving original aspect ratio.
+     */
+    protected function resolveDimensions(string $sourcePath, ?int $width, ?int $height): array
+    {
+        $width = $this->normalizeDimension($width);
+        $height = $this->normalizeDimension($height);
+        $originalDimensions = $this->readImageDimensions($sourcePath);
+
+        if ($originalDimensions === null) {
+            return [$width, $height];
+        }
+
+        [$originalWidth, $originalHeight] = $originalDimensions;
+
+        if ($width === null && $height === null) {
+            return [$originalWidth, $originalHeight];
+        }
+
+        if ($width === null && $height !== null) {
+            $width = max(1, (int) round($height * ($originalWidth / $originalHeight)));
+        }
+
+        if ($height === null && $width !== null) {
+            $height = max(1, (int) round($width * ($originalHeight / $originalWidth)));
+        }
+
+        return [$width, $height];
+    }
+
+    protected function normalizeDimension(?int $dimension): ?int
+    {
+        if ($dimension === null) {
+            return null;
+        }
+
+        return $dimension > 0 ? $dimension : null;
+    }
+
+    protected function readImageDimensions(string $sourcePath): ?array
+    {
+        $dimensions = @getimagesize($sourcePath);
+
+        if (! is_array($dimensions) || empty($dimensions[0]) || empty($dimensions[1])) {
+            return null;
+        }
+
+        $width = (int) $dimensions[0];
+        $height = (int) $dimensions[1];
+
+        if ($width <= 0 || $height <= 0) {
+            return null;
+        }
+
+        return [$width, $height];
+    }
+
+    protected function withFallbackMetadata(array $attributes, string $reason): array
+    {
+        if (! array_key_exists('data-image-optimizer-status', $attributes)) {
+            $attributes['data-image-optimizer-status'] = 'original-fallback';
+        }
+
+        if (! array_key_exists('data-image-optimizer-reason', $attributes)) {
+            $attributes['data-image-optimizer-reason'] = $reason;
+        }
+
+        return $attributes;
+    }
+
+    protected function shouldBypassOptimization(string $sourcePath, ?int $targetWidth, ?int $targetHeight): bool
+    {
+        if ($this->driverName !== 'gd') {
+            return false;
+        }
+
+        $memoryLimit = $this->memoryLimitInBytes();
+        if ($memoryLimit === null) {
+            return false;
+        }
+
+        $originalDimensions = $this->readImageDimensions($sourcePath);
+        if ($originalDimensions === null) {
+            return false;
+        }
+
+        [$sourceWidth, $sourceHeight] = $originalDimensions;
+        $targetWidth ??= $sourceWidth;
+        $targetHeight ??= $sourceHeight;
+
+        if ($targetWidth <= 0 || $targetHeight <= 0) {
+            return false;
+        }
+
+        $estimatedBytes = $this->estimateGdProcessingBytes($sourceWidth, $sourceHeight, $targetWidth, $targetHeight);
+        $availableBytes = $memoryLimit - memory_get_usage(true);
+
+        // Keep a 15% headroom to avoid fatal OOM in GD operations.
+        return $availableBytes > 0 && $estimatedBytes > (int) floor($availableBytes * 0.85);
+    }
+
+    protected function estimateGdProcessingBytes(
+        int $sourceWidth,
+        int $sourceHeight,
+        int $targetWidth,
+        int $targetHeight,
+    ): int {
+        $bytesPerPixel = 4;
+
+        $sourceBuffer = $sourceWidth * $sourceHeight * $bytesPerPixel * 2;
+        $targetBuffer = $targetWidth * $targetHeight * $bytesPerPixel * 2;
+        $overhead = 32 * 1024 * 1024;
+
+        return $sourceBuffer + $targetBuffer + $overhead;
+    }
+
+    protected function memoryLimitInBytes(): ?int
+    {
+        $limit = ini_get('memory_limit');
+        if (! is_string($limit) || $limit === '' || $limit === '-1') {
+            return null;
+        }
+
+        $limit = trim($limit);
+        $unit = strtolower(substr($limit, -1));
+        $value = (float) $limit;
+
+        if ($value <= 0) {
+            return null;
+        }
+
+        return match ($unit) {
+            'g' => (int) ($value * 1024 * 1024 * 1024),
+            'm' => (int) ($value * 1024 * 1024),
+            'k' => (int) ($value * 1024),
+            default => (int) $value,
+        };
     }
 
     protected function resolveDriverName(mixed $configuredDriver): string

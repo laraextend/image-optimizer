@@ -21,6 +21,7 @@
 - **⚡ Smart Caching** — Manifest-based cache with automatic invalidation when source files change
 - **🔧 Artisan Commands** — `img:clear` and `img:warm` for cache management
 - **🏎️ Performance-Optimized** — Lazy loading, `fetchpriority`, `decoding="async"` by default
+- **🛡️ Memory-Safe Fallback** — Automatically serves original images when GD memory would be exceeded
 - **📦 Zero Config** — Works immediately after installation, no configuration required
 - **🔄 GD & Imagick** — Automatic driver detection, uses whichever is available
 - **🏷️ Flexible HTML Attributes** — Custom classes, IDs and arbitrary attributes supported
@@ -151,15 +152,17 @@ Generates a simple `<img>` tag with an optimized image. No `srcset` — ideal fo
 |-----------|------|---------|-------------|
 | `src` | `string` | — | Path to source file (relative to `base_path()`) |
 | `alt` | `string` | `''` | Alt text for accessibility |
-| `width` | `?int` | `null` | Desired width in pixels (null = original size) |
-| `height` | `?int` | `null` | Desired height in pixels (null = auto-calculated from aspect ratio) |
+| `width` | `?int` | `null` | Desired width in pixels (null + null height = original width) |
+| `height` | `?int` | `null` | Desired height in pixels (null + null width = original height) |
 | `class` | `string` | `''` | CSS class(es) for the `<img>` element |
-| `format` | `string` | `'webp'` | Target format: `webp`, `avif`, `jpg`, `png` |
-| `loading` | `string` | `'lazy'` | Loading behavior: `lazy` or `eager` |
-| `fetchpriority` | `string` | `'auto'` | Fetch priority: `auto`, `high`, `low` |
+| `format` | `?string` | config default (`webp`) | Target format: `webp`, `avif`, `jpg`, `png` |
+| `loading` | `?string` | config default (`lazy`) | Loading behavior: `lazy` or `eager` |
+| `fetchpriority` | `?string` | config default (`auto`) | Fetch priority: `auto`, `high`, `low` |
 | `id` | `?string` | `null` | HTML ID for the element |
 | `original` | `bool` | `false` | `true` = serve original file without optimization |
 | `attributes` | `array` | `[]` | Additional HTML attributes as key-value array |
+
+> If only one dimension is provided, the other one is calculated proportionally from the original image.
 
 ---
 
@@ -199,7 +202,7 @@ Generates an `<img>` with `srcset` and `sizes` — the browser automatically pic
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `sizes` | `string` | `'100vw'` | The `sizes` attribute for responsive selection |
+| `sizes` | `?string` | config default (`100vw`) | The `sizes` attribute for responsive selection |
 
 > **Tip:** When using `fetchpriority: 'high'`, `loading` is automatically set to `eager`.
 
@@ -261,8 +264,8 @@ Generates a `<picture>` element with a `<source>` for each modern format and an 
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `formats` | `array` | `['avif', 'webp']` | Modern formats for `<source>` elements |
-| `fallbackFormat` | `string` | `'jpg'` | Format for the `<img>` fallback element |
+| `formats` | `?array` | config default (`['avif', 'webp']`) | Modern formats for `<source>` elements |
+| `fallbackFormat` | `?string` | config default (`jpg`) | Format for the `<img>` fallback element |
 | `imgClass` | `string` | `''` | CSS class(es) for the `<img>` element |
 | `sourceClass` | `string` | `''` | CSS class(es) for all `<source>` elements |
 
@@ -291,7 +294,7 @@ Returns only the URL of the optimized image — perfect for CSS backgrounds, OG 
 |-----------|------|---------|-------------|
 | `src` | `string` | — | Path to source file |
 | `width` | `?int` | `null` | Desired width (null = original) |
-| `format` | `string` | `'webp'` | Target format |
+| `format` | `?string` | config default (`webp`) | Target format |
 | `original` | `bool` | `false` | `true` = URL of the original file |
 
 ---
@@ -369,6 +372,21 @@ Use the `attributes` parameter to add any HTML attributes:
     ],
 ) !!}
 ```
+
+### Memory-Safe Fallback (GD)
+
+When using the GD driver, very large images can exceed PHP memory limits during optimization.  
+In that case, the package automatically falls back to the copied original image instead of throwing a fatal error.
+
+Fallback output is marked on the rendered `<img>`:
+
+```html
+<img ... data-image-optimizer-status="original-fallback" data-image-optimizer-reason="memory-limit">
+```
+
+Possible `data-image-optimizer-reason` values:
+- `memory-limit` — optimization skipped proactively due to memory estimate
+- `optimization-error` — optimization failed and fallback was applied
 
 ---
 
