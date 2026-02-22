@@ -7,29 +7,30 @@
 
 # Laravel Media Toolkit
 
-**A comprehensive Laravel media toolkit for automatic image optimization, responsive variants, next-gen formats and more — ready to use directly in Blade.**
+**A comprehensive Laravel media toolkit for automatic image optimization, transformations, responsive variants, next-gen formats and more — ready to use directly in Blade.**
 
-`laraextend/media-toolkit` handles the heavy lifting for you: images are automatically resized, compressed, converted to modern formats (WebP, AVIF) and rendered as responsive `<img>` or `<picture>` tags. Comes with smart caching, Artisan commands, simple Blade helpers and Blade components.
+`laraextend/media-toolkit` handles the heavy lifting for you: images are resized, cropped, filtered, compressed, converted to modern formats (WebP, AVIF) and rendered as responsive `<img>` or `<picture>` tags via a clean fluent API.
 
-> **Roadmap:** Future releases will extend the toolkit to cover animated images (GIF/APNG/WebP animated), vector graphics (SVG), audio and video processing.
+> **Roadmap:** Future releases will extend the toolkit to cover animated images (GIF/APNG/WebP animated), vector graphics (SVG), audio and video processing — all behind the same `Media::` facade.
 
 ---
 
 ## ✨ Features
 
-- **🖼️ Four Blade Helpers** — `img()`, `responsive_img()`, `picture()` and `img_url()` for every use case
-- **🧩 Four Blade Components** — `<x-laraextend::img>`, `<x-laraextend::responsive-img>`, `<x-laraextend::picture>`, `<x-laraextend::img-url>`
-- **📐 Automatic Responsive Variants** — Generates 5 breakpoint sizes (0.5×, 0.75×, 1×, 1.5×, 2×) with `srcset`
-- **🎨 Next-Gen Formats** — WebP, AVIF, JPEG, PNG — with automatic fallback if the server lacks support
-- **⚡ Smart Caching** — Manifest-based cache with automatic invalidation when source files change
-- **🔧 Artisan Commands** — `media:img-clear` and `media:img-warm` for cache management
+- **🔗 Fluent Builder API** — `Media::image($path)->resize(800)->grayscale()->html(alt: 'Hero')`
+- **🧩 Four Blade Components** — `<x-media::img>`, `<x-media::responsive-img>`, `<x-media::picture>`, `<x-media::img-url>`
+- **🖼️ Four Blade Helpers** — `img()`, `responsive_img()`, `picture()` and `img_url()` (deprecated, still available)
+- **📐 Image Transformations** — resize, fit, stretch, crop with automatic proportional scaling
+- **🎨 Image Filters** — grayscale, sepia, negate, brightness, contrast, colorize, blur, smooth, rotate, flip, watermark
+- **📱 Automatic Responsive Variants** — Generates 5 breakpoint sizes (0.5×, 0.75×, 1×, 1.5×, 2×) with `srcset`
+- **🌐 Next-Gen Formats** — WebP, AVIF, JPEG, PNG with automatic fallback
+- **⚡ Smart Caching** — Manifest-based cache with automatic invalidation and filter-aware cache keys
+- **🔧 Artisan Commands** — `media:cache-clear` and `media:cache-warm` with optional `--type=` flag
 - **⚙️ Configurable** — Publish `config/media-toolkit.php` to customize quality, formats, breakpoints and more
 - **🏎️ Performance-Optimized** — Lazy loading, `fetchpriority`, `decoding="async"` by default
 - **🛡️ Memory-Safe Fallback** — Automatically serves original images when GD memory would be exceeded
-- **📦 Zero Config** — Works immediately after installation, no configuration required
-- **🔄 GD & Imagick** — Automatic driver detection, uses whichever is available
-- **🏷️ Flexible HTML Attributes** — Custom classes, IDs and arbitrary attributes supported
-- **📁 Original Mode** — Serve images unmodified (without any processing) when needed
+- **📦 Zero Config** — Works immediately after installation
+- **🔄 GD & Imagick** — Automatic driver detection
 - **⚡ Livewire & Alpine.js Ready** — Blade components forward `wire:*`, `x-*` and `data-*` attributes automatically
 
 ---
@@ -46,235 +47,232 @@
 
 ## 🚀 Installation
 
-### 1. Install the package via Composer
-
 ```bash
 composer require laraextend/media-toolkit
 ```
 
-> The ServiceProvider is registered automatically via Laravel's Auto-Discovery.
+> The ServiceProvider and `Media` Facade alias are registered automatically via Laravel's Auto-Discovery.
 
-### 2. Done!
-
-That's it. No config files, no migrations, no additional steps needed.
-
-### 3. Optional Configuration
-
-If you want to customize defaults, publish the config file:
+### Optional: Publish Configuration
 
 ```bash
 php artisan vendor:publish --tag=media-toolkit-config
 ```
 
-Published file: `config/media-toolkit.php`
+---
 
-Default config schema:
+## 🔗 Fluent API — `Media::image()`
+
+The primary API is a fluent builder accessed through the `Media` facade.
 
 ```php
-return [
-    'driver'     => env('MEDIA_TOOLKIT_DRIVER', 'auto'),
-    'output_dir' => env('MEDIA_TOOLKIT_OUTPUT_DIR', 'img/optimized'),
+use Laraextend\MediaToolkit\Facades\Media;
 
-    'responsive' => [
-        'size_factors' => [0.5, 0.75, 1.0, 1.5, 2.0],
-        'min_width'    => 100,
-    ],
+// Simple optimized URL
+$url = Media::image('resources/images/hero.jpg')
+    ->resize(width: 800)
+    ->format('webp')
+    ->url();
 
-    'quality' => [
-        'webp' => 80,
-        'avif' => 65,
-        'jpg'  => 82,
-        'jpeg' => 82,
-        'png'  => 85,
-    ],
-
-    'defaults' => [
-        'format'          => 'webp',
-        'picture_formats' => ['avif', 'webp'],
-        'fallback_format' => 'jpg',
-        'loading'         => 'lazy',
-        'fetchpriority'   => 'auto',
-        'sizes'           => '100vw',
-    ],
-];
-```
-
-Example `.env` overrides:
-
-```dotenv
-MEDIA_TOOLKIT_DRIVER=auto
-MEDIA_TOOLKIT_OUTPUT_DIR=img/optimized
+// Full responsive <picture> with filters
+echo Media::image('resources/images/hero.jpg')
+    ->resize(width: 1200)
+    ->grayscale()
+    ->picture(formats: ['avif', 'webp'], fallback: 'jpg')
+    ->fetchpriority('high')
+    ->html(alt: 'Hero', class: 'w-full');
 ```
 
 ---
 
-## 📖 Usage
+## 📐 Transformations
 
-### Source Images
+### `resize(?int $width, ?int $height)` — Proportional Resize
 
-Source images are referenced relative to the **project root** (`base_path()`). Images can live anywhere in your project, for example:
+Scale the image while preserving aspect ratio. Provide width, height, or both (contain-box).
 
+```php
+Media::image('photo.jpg')->resize(width: 800)              // → 800px wide, height proportional
+Media::image('photo.jpg')->resize(height: 600)             // → 600px tall, width proportional
+Media::image('photo.jpg')->resize(width: 800, height: 600) // → fit inside 800×600, no crop
 ```
-resources/views/pages/home/hero.jpg
-resources/images/logo.png
-storage/app/uploads/photo.jpg
+
+Chain `->upscale()` to allow resizing beyond the original dimensions (capped by default):
+
+```php
+Media::image('small.jpg')->resize(width: 1200)->upscale()->url();
 ```
 
-Optimized variants are automatically stored in `public/<output_dir>/` (default: `public/img/optimized/`) and served from there.
+### `fit(int $width, int $height)` — Cover + Crop
+
+Scale so the image fills the frame completely, cropping the overflow from center.
+
+```php
+Media::image('photo.jpg')->fit(400, 400)->url();  // Always exactly 400×400
+```
+
+### `stretch(int $width, int $height)` — Exact Dimensions, No Aspect Ratio
+
+Resize to exact dimensions, ignoring aspect ratio.
+
+```php
+Media::image('photo.jpg')->stretch(200, 200)->url();
+```
+
+### `crop(int $width, int $height, int|string $x = 0, int|string $y = 0)` — Region Extract
+
+Extract a region from the original image without scaling. String offsets: `'left'`, `'center'`, `'right'`, `'top'`, `'bottom'`.
+
+```php
+Media::image('photo.jpg')->crop(400, 200, 'center', 'center')->url();
+Media::image('photo.jpg')->crop(400, 200, 100, 50)->url();  // pixel offsets
+```
+
+> **Note:** Only one size/crop operation can be used per chain. Combining `resize()` + `fit()` etc. throws a `MediaBuilderException`.
+
+### `original()` — No Processing
+
+Serve the original file without any transformation or optimization.
+
+```php
+Media::image('resources/images/photo.jpg')->original()->url();
+```
+
+> `original()` locks the chain — calling `resize()`, `format()`, `quality()`, filters or `watermark()` afterwards throws a `MediaBuilderException`.
 
 ---
 
-## 🖼️ Blade Helpers
+## 🎨 Filters
 
-### 1. `img()` — Single Optimized Image
+Filters are stackable and can be combined in any order.
 
-Generates a simple `<img>` tag with an optimized image. No `srcset` — ideal for icons, logos and fixed-size images.
-
-```blade
-{!! img(
-    src: 'resources/images/logo.jpg',
-    alt: 'Company Logo',
-    width: 200,
-    format: 'webp',
-) !!}
+```php
+Media::image('photo.jpg')
+    ->resize(width: 800)
+    ->grayscale()
+    ->blur(3)
+    ->brightness(20)
+    ->html(alt: 'Photo');
 ```
 
-**Output:**
-```html
-<img src="/img/optimized/a1b2c3d4e5f6/logo-200w.webp"
-     alt="Company Logo"
-     loading="lazy"
-     decoding="async"
-     fetchpriority="auto"
-     width="200"
-     height="80">
+| Method | Description |
+|--------|-------------|
+| `->grayscale()` | Convert to black & white |
+| `->sepia()` | Apply a warm sepia tone |
+| `->negate()` | Invert all colors |
+| `->brightness(int $level)` | Adjust brightness: −255 (darkest) to +255 (brightest) |
+| `->contrast(int $level)` | Adjust contrast: −100 to +100 |
+| `->colorize(int $r, int $g, int $b)` | Tint with RGB offset: −255 to +255 per channel |
+| `->blur(int $amount = 1)` | Apply blur (amount = number of passes) |
+| `->smooth(int $level)` | Smooth/sharpen: −10 (max sharpen) to +10 (max smooth) |
+| `->rotate(int\|string $angle)` | Rotate degrees CCW, or `'auto'` for EXIF-based rotation |
+| `->flipHorizontal()` | Mirror left-right |
+| `->flipVertical()` | Mirror top-bottom |
+| `->flipBoth()` | Mirror both axes |
+
+### `watermark(string $source, string $position, int $padding, int $opacity)` — Overlay
+
+```php
+Media::image('photo.jpg')
+    ->resize(width: 1200)
+    ->watermark(
+        source:   'resources/images/watermark.png',
+        position: 'bottom-right',
+        padding:  20,
+        opacity:  80,
+    )
+    ->html(alt: 'Photo');
 ```
 
-**All Parameters:**
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `src` | `string` | — | Path to source file (relative to `base_path()`) |
-| `alt` | `string` | `''` | Alt text for accessibility |
-| `width` | `?int` | `null` | Desired width in pixels (null + null height = original width) |
-| `height` | `?int` | `null` | Desired height in pixels (null + null width = original height) |
-| `class` | `string` | `''` | CSS class(es) for the `<img>` element |
-| `format` | `?string` | config default (`webp`) | Target format: `webp`, `avif`, `jpg`, `png` |
-| `loading` | `?string` | config default (`lazy`) | Loading behavior: `lazy` or `eager` |
-| `fetchpriority` | `?string` | config default (`auto`) | Fetch priority: `auto`, `high`, `low` |
-| `id` | `?string` | `null` | HTML ID for the element |
-| `original` | `bool` | `false` | `true` = serve original file without optimization |
-| `attributes` | `array` | `[]` | Additional HTML attributes as key-value array |
-
-> If only one dimension is provided, the other one is calculated proportionally from the original image.
+Position values: `'top-left'` `'top-center'` `'top-right'` `'center-left'` `'center'` `'center-right'` `'bottom-left'` `'bottom-center'` `'bottom-right'`
 
 ---
 
-### 2. `responsive_img()` — Responsive with srcset
+## 🖼️ Output Methods
 
-Generates an `<img>` with `srcset` and `sizes` — the browser automatically picks the best matching size.
+### `->url()` — URL String
 
-```blade
-{!! responsive_img(
-    src: 'resources/images/hero.jpg',
-    alt: 'Hero Banner',
-    width: 800,
-    format: 'webp',
-    fetchpriority: 'high',
-    sizes: '(max-width: 768px) 100vw, 800px',
-) !!}
+```php
+$url = Media::image('resources/images/og.jpg')->resize(width: 1200)->format('jpg')->url();
 ```
 
-**Additional Parameters (on top of `img()`):**
+### `->html(string $alt, string $class, ?string $id, array $attributes)` — HTML Tag
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `sizes` | `?string` | config default (`100vw`) | The `sizes` attribute for responsive selection |
+Output depends on the active output mode set via `->responsive()` or `->picture()`:
 
-> **Tip:** When using `fetchpriority: 'high'`, `loading` is automatically set to `eager`.
+```php
+// Simple <img>
+echo Media::image('logo.png')->resize(width: 200)->html(alt: 'Logo', class: 'h-8');
+
+// <img> with srcset
+echo Media::image('hero.jpg')->resize(width: 800)->responsive('(max-width: 768px) 100vw, 800px')->html(alt: 'Hero');
+
+// <picture> with <source> elements
+echo Media::image('hero.jpg')->resize(width: 800)->picture()->html(alt: 'Hero');
+```
+
+### `->responsive(?string $sizes)` — Switch to srcset Mode
+
+```php
+Media::image('hero.jpg')
+    ->resize(width: 800)
+    ->responsive('(max-width: 768px) 100vw, 800px')
+    ->fetchpriority('high')
+    ->html(alt: 'Hero Banner', class: 'w-full');
+```
+
+### `->picture(?array $formats, ?string $fallback, string $imgClass, string $sourceClass)` — Switch to `<picture>` Mode
+
+```php
+Media::image('hero.jpg')
+    ->resize(width: 1200)
+    ->picture(formats: ['avif', 'webp'], fallback: 'jpg', imgClass: 'w-full')
+    ->fetchpriority('high')
+    ->html(alt: 'Hero', class: 'hero-picture');
+```
 
 ---
 
-### 3. `picture()` — Multi-Format with Fallback
+## ⚙️ Output Modifiers
 
-Generates a `<picture>` element with a `<source>` for each modern format and an `<img>` fallback. **The best choice for maximum performance** — the browser picks the best supported format.
+These can be chained anywhere before `->url()` or `->html()`:
 
-```blade
-{!! picture(
-    src: 'resources/images/hero.jpg',
-    alt: 'Hero Banner',
-    width: 800,
-    formats: ['avif', 'webp'],
-    fallbackFormat: 'jpg',
-    fetchpriority: 'high',
-    sizes: '(max-width: 768px) 100vw, 800px',
-    class: 'hero-picture',
-    imgClass: 'hero-img',
-) !!}
-```
-
-**Additional Parameters (on top of the previous ones):**
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `formats` | `?array` | config default (`['avif', 'webp']`) | Modern formats for `<source>` elements |
-| `fallbackFormat` | `?string` | config default (`jpg`) | Format for the `<img>` fallback element |
-| `imgClass` | `string` | `''` | CSS class(es) for the `<img>` element |
-| `sourceClass` | `string` | `''` | CSS class(es) for all `<source>` elements |
-
-> **Note:** The `class` parameter on `picture()` is applied to the `<picture>` element, not to `<img>`.
-
----
-
-### 4. `img_url()` — URL Only
-
-Returns only the URL of the optimized image — perfect for CSS backgrounds, OG tags and anywhere you just need a URL.
-
-```blade
-{{-- CSS Background --}}
-<div style="background-image: url('{{ img_url(src: 'resources/images/bg.jpg', width: 1920) }}')">
-
-{{-- Open Graph Meta --}}
-<meta property="og:image" content="{{ url(img_url(src: 'resources/images/og.jpg', width: 1200, format: 'jpg')) }}">
-
-{{-- Original URL --}}
-<a href="{{ img_url(src: 'resources/images/download.png', original: true) }}">Download</a>
-```
-
-**Parameters:**
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `src` | `string` | — | Path to source file |
-| `width` | `?int` | `null` | Desired width (null = original) |
-| `format` | `?string` | config default (`webp`) | Target format |
-| `original` | `bool` | `false` | `true` = URL of the original file |
+| Method | Description |
+|--------|-------------|
+| `->format(string $format)` | Output format: `webp`, `avif`, `jpg`, `jpeg`, `png` |
+| `->quality(int $quality)` | Quality 1–100 (overrides config) |
+| `->loading(string $loading)` | `'lazy'` or `'eager'` |
+| `->fetchpriority(string $priority)` | `'auto'`, `'high'`, `'low'` (high → forces eager) |
+| `->noCache()` | Skip the manifest cache, always regenerate |
 
 ---
 
 ## 🧩 Blade Components
 
-All four helpers are also available as Blade components under the `laraextend` namespace. They accept the same parameters as the helper functions.
+All components use the `media` namespace and map to the `Media::image()` builder.
 
-> **Note:** Because `attributes` is a reserved word in Blade components, use `extra-attributes` to pass an explicit attribute array. Attributes placed directly on the component tag (e.g. `wire:key`, `data-*`) are forwarded automatically.
+> Attributes placed directly on the component tag (`wire:key`, `data-*`, `x-*`) are forwarded automatically. Use `:extra-attributes="[...]"` for programmatic attribute arrays.
 
-### `<x-laraextend::img>` — Single Optimized Image
+### `<x-media::img>` — Single Optimized Image
 
 ```blade
-<x-laraextend::img
+<x-media::img
     src="resources/images/logo.png"
     alt="Company Logo"
     :width="200"
     format="webp"
+    loading="eager"
 />
 ```
 
+**Props:** `src`, `alt`, `width`, `height`, `class`, `format`, `loading`, `fetchpriority`, `id`, `original`, `extra-attributes`
+
 ---
 
-### `<x-laraextend::responsive-img>` — Responsive with srcset
+### `<x-media::responsive-img>` — Responsive with srcset
 
 ```blade
-<x-laraextend::responsive-img
+<x-media::responsive-img
     src="resources/images/hero.jpg"
     alt="Hero Banner"
     :width="800"
@@ -283,12 +281,14 @@ All four helpers are also available as Blade components under the `laraextend` n
 />
 ```
 
+**Additional prop:** `sizes`
+
 ---
 
-### `<x-laraextend::picture>` — Multi-Format with Fallback
+### `<x-media::picture>` — Multi-Format with Fallback
 
 ```blade
-<x-laraextend::picture
+<x-media::picture
     src="resources/images/hero.jpg"
     alt="Hero Banner"
     :width="800"
@@ -301,78 +301,40 @@ All four helpers are also available as Blade components under the `laraextend` n
 />
 ```
 
----
+**Additional props:** `formats`, `fallback-format`, `img-class`, `source-class`
 
-### `<x-laraextend::img-url>` — URL Only
-
-```blade
-<div style="background-image: url('<x-laraextend::img-url src="resources/images/bg.jpg" :width="1920" />')">
-```
+> The Blade attribute bag (`wire:key`, `x-*`, `@*` etc.) is applied to the outer `<picture>` element. Use `extra-attributes` for the inner `<img>`.
 
 ---
 
-## ⚡ Livewire & Alpine.js
-
-Blade components forward all attributes from the Blade attribute bag automatically — including `wire:*`, `x-*`, `@*` and `data-*`. You do **not** need `extra-attributes` for Livewire or Alpine directives.
-
-### Attribute routing
-
-| Component | Bag attributes applied to |
-|-----------|--------------------------
-| `<x-laraextend::img>` | `<img>` |
-| `<x-laraextend::responsive-img>` | `<img>` |
-| `<x-laraextend::picture>` | `<picture>` (outermost element) |
-
-For `<picture>`, bag attributes land on the outer `<picture>` tag so that `wire:key` is placed on the correct element for Livewire DOM diffing. Use `extra-attributes` to pass additional attributes specifically to the inner `<img>`.
-
-### Examples
+### `<x-media::img-url>` — URL Only
 
 ```blade
-{{-- Livewire list — wire:key on <img> --}}
-@foreach ($images as $image)
-    <x-laraextend::img
-        :src="$image->path"
-        :alt="$image->title"
-        :width="400"
-        wire:key="image-{{ $image->id }}"
-    />
-@endforeach
-
-{{-- Livewire list — wire:key on <picture> (outermost) --}}
-@foreach ($images as $image)
-    <x-laraextend::picture
-        :src="$image->path"
-        :alt="$image->title"
-        :width="400"
-        wire:key="picture-{{ $image->id }}"
-    />
-@endforeach
-
-{{-- Alpine.js lazy-reveal --}}
-<x-laraextend::img
-    src="resources/images/hero.jpg"
-    alt="Hero"
-    :width="800"
-    x-show="visible"
-    x-transition
-/>
-
-{{-- wire:navigate for SPA-style page loads --}}
-<x-laraextend::img
-    src="resources/images/logo.png"
-    alt="Logo"
-    :width="180"
-    wire:navigate
-/>
+<div style="background-image: url('<x-media::img-url src="resources/images/bg.jpg" :width="1920" />')">
 ```
 
-> **Tip:** `wire:navigate` and similar boolean-like directives render as `wire:navigate=""`, which is valid HTML and works correctly with Livewire.
+**Props:** `src`, `width`, `format`, `original`
+
+---
+
+## 🖼️ Legacy Blade Helpers
+
+The four global helper functions are still available but marked `@deprecated`. They are now thin wrappers around `Media::image()`.
+
+```blade
+{{-- Still works: --}}
+{!! img(src: 'resources/images/logo.jpg', alt: 'Logo', width: 200, format: 'webp') !!}
+{!! responsive_img(src: 'resources/images/hero.jpg', alt: 'Hero', width: 800) !!}
+{!! picture(src: 'resources/images/hero.jpg', alt: 'Hero', width: 800) !!}
+{{ img_url(src: 'resources/images/og.jpg', width: 1200, format: 'jpg') }}
+
+{{-- Preferred (v2): --}}
+{!! Media::image('resources/images/hero.jpg')->resize(width: 800)->html(alt: 'Hero') !!}
+```
 
 ---
 
 ## ⚙️ Configuration
-
-After publishing the config file, you can customize all default values:
 
 ```bash
 php artisan vendor:publish --tag=media-toolkit-config
@@ -386,40 +348,51 @@ return [
     'driver'     => env('MEDIA_TOOLKIT_DRIVER', 'auto'),
 
     // Output directory relative to public/
-    'output_dir' => env('MEDIA_TOOLKIT_OUTPUT_DIR', 'img/optimized'),
+    'output_dir' => env('MEDIA_TOOLKIT_OUTPUT_DIR', 'media/optimized'),
 
-    // Responsive breakpoints
-    'responsive' => [
-        'size_factors' => [0.5, 0.75, 1.0, 1.5, 2.0], // multipliers of the requested width
-        'min_width'    => 100,                           // skip variants narrower than this
-    ],
+    'image' => [
 
-    // Image quality per format (1–100)
-    'quality' => [
-        'webp' => 80,
-        'avif' => 65,
-        'jpg'  => 82,
-        'jpeg' => 82,
-        'png'  => 85,
-    ],
+        // Image quality per format (1–100)
+        'quality' => [
+            'webp'  => 80,
+            'avif'  => 65,
+            'jpg'   => 82,
+            'jpeg'  => 82,
+            'png'   => 85,
+        ],
 
-    // Default HTML attributes and format choices
-    'defaults' => [
-        'format'          => 'webp',
-        'picture_formats' => ['avif', 'webp'],
-        'fallback_format' => 'jpg',
-        'loading'         => 'lazy',
-        'fetchpriority'   => 'auto',
-        'sizes'           => '100vw',
+        // Responsive breakpoints
+        'responsive' => [
+            'size_factors' => [0.5, 0.75, 1.0, 1.5, 2.0], // multipliers of the requested width
+            'min_width'    => 100,                           // skip variants narrower than this
+        ],
+
+        // Default HTML attribute values and format choices
+        'defaults' => [
+            'format'          => 'webp',
+            'picture_formats' => ['avif', 'webp'],
+            'fallback_format' => 'jpg',
+            'loading'         => 'lazy',
+            'fetchpriority'   => 'auto',
+            'sizes'           => '100vw',
+        ],
+
     ],
 ];
+```
+
+Example `.env` overrides:
+
+```dotenv
+MEDIA_TOOLKIT_DRIVER=imagick
+MEDIA_TOOLKIT_OUTPUT_DIR=media/optimized
 ```
 
 ---
 
 ## 📐 Responsive Variants — How It Works
 
-When you specify a `width` of e.g. `800`, the following variants are automatically generated:
+When you specify `width: 800`, the following variants are generated:
 
 | Factor | Calculation | Result |
 |--------|-------------|--------|
@@ -430,99 +403,28 @@ When you specify a `width` of e.g. `800`, the following variants are automatical
 | 2.0× | 800 × 2.0 | **1600w** |
 
 **Automatic constraints:**
-- Variants smaller than **100px** are skipped
-- Variants **wider than the original image** are skipped
-- If the original is ≤ 2× the target width, the **original width** is added as an additional variant
+- Variants smaller than `min_width` (default 100px) are skipped
+- Variants wider than the original image are skipped (no artificial upscaling)
+- If the original width is ≤ 2× the target, the original width is added as an additional variant
 - Duplicates are automatically removed
 
 ---
 
-## 🎨 Supported Formats & Quality Settings
+## ⚡ Performance
 
-| Format | MIME Type | Default Quality | Notes |
-|--------|-----------|-----------------|-------|
-| **WebP** | `image/webp` | 80 | Best balance of size and quality |
-| **AVIF** | `image/avif` | 65 | Smallest file size, slower compression |
-| **JPEG** | `image/jpeg` | 82 | Universally compatible |
-| **PNG** | `image/png` | 85 | Lossless, ideal for graphics with transparency |
-
-### Automatic Format Fallback
-
-If a format is not supported by the server, the fallback chain kicks in:
-
-```
-AVIF → WebP → JPEG
-```
-
-No need to worry — the package automatically selects the best available format.
-
----
-
-## ⚡ Performance Features
-
-### Automatic Loading Behavior
+### Loading Behavior
 
 ```blade
-{{-- Default: Lazy Loading --}}
-{!! img(src: '...', alt: '...') !!}
-{{-- → loading="lazy" decoding="async" --}}
+{{-- Default: Lazy Loading (below the fold) --}}
+{!! Media::image('photo.jpg')->resize(width: 600)->html(alt: 'Photo') !!}
+{{-- → loading="lazy" decoding="async" fetchpriority="auto" --}}
 
-{{-- Above the Fold: Eager Loading + High Priority --}}
-{!! img(src: '...', alt: '...', fetchpriority: 'high') !!}
+{{-- Above the Fold: High Priority --}}
+{!! Media::image('hero.jpg')->resize(width: 1200)->fetchpriority('high')->html(alt: 'Hero') !!}
 {{-- → loading="eager" decoding="async" fetchpriority="high" --}}
 ```
 
-> When using `fetchpriority: 'high'`, `loading` is automatically set to `eager`, even if explicitly set to `lazy`.
-
-### Custom HTML Attributes
-
-Use the `attributes` parameter (helpers) or pass attributes directly on components:
-
-```blade
-{{-- Helper --}}
-{!! img(
-    src: 'resources/images/photo.jpg',
-    alt: 'Photo',
-    width: 600,
-    attributes: [
-        'data-lightbox' => 'gallery',
-        'data-caption' => 'A beautiful photo',
-        'style' => 'border-radius: 8px',
-    ],
-) !!}
-
-{{-- Component — direct attributes are forwarded automatically --}}
-<x-laraextend::img
-    src="resources/images/photo.jpg"
-    alt="Photo"
-    :width="600"
-    data-lightbox="gallery"
-    style="border-radius: 8px"
-/>
-
-{{-- Component — programmatic attribute arrays via extra-attributes --}}
-<x-laraextend::img
-    src="resources/images/photo.jpg"
-    alt="Photo"
-    :width="600"
-    :extra-attributes="['data-lightbox' => 'gallery', 'style' => 'border-radius: 8px']"
-/>
-```
-
-### Memory-Safe Fallback (GD)
-
-When using the GD driver, very large images can exceed PHP memory limits during optimization.
-In that case, the package automatically falls back to the copied original image instead of throwing a fatal error.
-
-Fallback output is marked on the rendered `<img>`:
-
-```html
-<img ... data-media-toolkit-status="original-fallback" data-media-toolkit-reason="memory-limit">
-```
-
-Possible `data-media-toolkit-reason` values:
-- `memory-limit` — optimization skipped proactively due to memory estimate
-- `optimization-error` — optimization failed and fallback was applied
+> Setting `fetchpriority('high')` automatically forces `loading="eager"`, even if `lazy` was set explicitly.
 
 ---
 
@@ -530,10 +432,10 @@ Possible `data-media-toolkit-reason` values:
 
 ### Clear Cache
 
-Deletes all optimized image variants from `public/<output_dir>/` (default: `public/img/optimized/`):
+Deletes all optimized media variants from `public/<output_dir>/`:
 
 ```bash
-php artisan media:img-clear
+php artisan media:cache-clear
 ```
 
 ```
@@ -542,59 +444,55 @@ php artisan media:img-clear
 
 ### Warm Cache
 
-Checks all cached variants and regenerates outdated ones (when the source file has changed):
+Regenerates any variants whose source file has changed since they were last generated:
 
 ```bash
-php artisan media:img-warm
+php artisan media:cache-warm
 ```
 
 ```
-Checking cache for outdated images...
+Checking cache for outdated media variants...
 ✓ 3 regenerated, 39 up to date.
 ⚠ Source file not found: resources/images/deleted-image.jpg
 ```
 
-> **Tip:** Run `media:img-warm` after every deployment to ensure all variants are up to date.
+Both commands accept `--type=` for future multi-type support (image, video, audio).
 
 ### In Your Deployment Pipeline
 
 ```bash
-# In your deployment script:
-php artisan media:img-clear    # Optional: rebuild everything from scratch
-php artisan media:img-warm     # Or: only regenerate outdated variants
+php artisan media:cache-clear   # Optional: rebuild everything from scratch
+php artisan media:cache-warm    # Recommended: only regenerate what changed
 ```
 
 ---
 
 ## 💾 Caching — How It Works
 
-Each combination of source file + width + format + mode creates a **dedicated cache directory** in `public/<output_dir>/` (default: `public/img/optimized/`):
+Each unique combination of source file, dimensions, format, operations and filters gets its own **cache directory** in `public/<output_dir>/` (default: `public/media/optimized/`):
 
 ```
-public/img/optimized/
-├── a1b2c3d4e5f6/          ← Hash of the combination
-│   ├── manifest.json       ← Metadata + variant info
+public/media/optimized/
+├── a1b2c3d4e5f6/          ← Hash of source + options + filter fingerprint
+│   ├── manifest.json       ← Metadata + modification timestamp
 │   ├── hero-400w.webp
 │   ├── hero-600w.webp
-│   ├── hero-800w.webp
-│   ├── hero-1200w.webp
-│   └── hero-1600w.webp
-├── f6e5d4c3b2a1/
+│   └── hero-800w.webp
+├── f6e5d4c3b2a1/          ← Same image, different filter chain = different cache
 │   ├── manifest.json
-│   └── logo-200w.webp
+│   ├── hero-400w.webp     ← With grayscale applied
+│   └── hero-800w.webp
 └── originals/              ← Unmodified originals (when original: true)
     └── a1b2c3d4-photo.jpg
 ```
 
-### Automatic Invalidation
-
-The `manifest.json` stores the **timestamp of the source file**. On every request, the following check runs:
+The `manifest.json` stores the **last-modified timestamp** of the source file. On every request:
 
 1. Does the cache directory with manifest exist? → **Yes**: Check timestamp
-2. Has the source file changed? → **No**: Serve cached variants ✓
-3. Has the source file changed? → **Yes**: Delete old cache, generate new variants
+2. Has the source changed? → **No**: Serve from cache ✓
+3. Has the source changed? → **Yes**: Delete old cache, regenerate variants
 
-**This means:** You never have to manually clear the cache when replacing images. The package detects changes automatically.
+**You never need to clear the cache manually when replacing images** — changes are detected automatically.
 
 ---
 
@@ -603,88 +501,77 @@ The `manifest.json` stores the **timestamp of the source file**. On every reques
 ### Hero Banner (Above the Fold)
 
 ```blade
-{!! picture(
-    src: 'resources/views/pages/home/hero.jpg',
-    alt: 'Welcome to our App',
-    width: 1200,
-    formats: ['avif', 'webp'],
-    fallbackFormat: 'jpg',
-    fetchpriority: 'high',
-    sizes: '100vw',
-    class: 'w-full',
-    imgClass: 'w-full h-auto object-cover',
-) !!}
+{{-- Fluent API --}}
+{!! Media::image('resources/images/hero.jpg')
+    ->resize(width: 1200)
+    ->picture(formats: ['avif', 'webp'], fallback: 'jpg')
+    ->fetchpriority('high')
+    ->html(alt: 'Welcome', class: 'w-full', attributes: ['id' => 'hero']) !!}
 
-{{-- Component --}}
-<x-laraextend::picture
-    src="resources/views/pages/home/hero.jpg"
-    alt="Welcome to our App"
+{{-- Blade Component --}}
+<x-media::picture
+    src="resources/images/hero.jpg"
+    alt="Welcome"
     :width="1200"
     :formats="['avif', 'webp']"
     fallback-format="jpg"
     fetchpriority="high"
-    sizes="100vw"
     class="w-full"
     img-class="w-full h-auto object-cover"
 />
 ```
 
-### Product Image in a Card
+### Logo (Fixed Size, Eager)
 
 ```blade
-<x-laraextend::responsive-img
-    :src="'resources/images/products/' . $product->image"
-    :alt="$product->name"
-    :width="400"
-    format="webp"
-    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 400px"
-    class="rounded-lg shadow-md"
-/>
-```
-
-### Logo (Fixed Size)
-
-```blade
-<x-laraextend::img
+<x-media::img
     src="resources/images/logo.png"
     alt="Company Logo"
     :width="180"
-    format="webp"
     loading="eager"
 />
 ```
 
-### CSS Background with Optimized Image
+### Product Gallery with Lightbox
 
 ```blade
-<section style="background-image: url('{{ img_url(src: 'resources/images/bg-pattern.jpg', width: 1920, format: 'webp') }}')">
+@foreach ($images as $image)
+    {!! Media::image($image->path)
+        ->resize(width: 600)
+        ->responsive('(max-width: 768px) 100vw, 33vw')
+        ->html(
+            alt:        $image->caption,
+            class:      'gallery-thumb cursor-pointer',
+            attributes: [
+                'data-lightbox' => 'gallery',
+                'data-full'     => Media::image($image->path)->resize(width: 1800)->format('jpg')->url(),
+            ],
+        ) !!}
+@endforeach
+```
+
+### Open Graph Meta Tags
+
+```blade
+<meta property="og:image" content="{{ url(Media::image('resources/images/og.jpg')->resize(width: 1200)->format('jpg')->url()) }}">
+```
+
+### CSS Background
+
+```blade
+<section style="background-image: url('{{ Media::image('resources/images/bg.jpg')->resize(width: 1920)->url() }}')">
     <h1>Welcome</h1>
 </section>
 ```
 
-### Open Graph & Social Media Meta Tags
+### Grayscale Thumbnail Grid
 
 ```blade
-<meta property="og:image" content="{{ url(img_url(src: 'resources/images/og-image.jpg', width: 1200, format: 'jpg')) }}">
-<meta property="og:image:width" content="1200">
-```
-
-### Gallery with Lightbox
-
-```blade
-@foreach ($images as $image)
-    {!! responsive_img(
-        src: $image->path,
-        alt: $image->caption,
-        width: 600,
-        format: 'webp',
-        sizes: '(max-width: 768px) 100vw, 33vw',
-        class: 'gallery-thumb cursor-pointer',
-        attributes: [
-            'data-lightbox' => 'gallery',
-            'data-full' => img_url(src: $image->path, width: 1800, format: 'jpg'),
-        ],
-    ) !!}
+@foreach ($products as $product)
+    {!! Media::image($product->image)
+        ->fit(300, 300)
+        ->grayscale()
+        ->html(alt: $product->name, class: 'product-thumb') !!}
 @endforeach
 ```
 
@@ -693,7 +580,7 @@ The `manifest.json` stores the **timestamp of the source file**. On every reques
 ```blade
 {{-- wire:key on <img> --}}
 @foreach ($items as $item)
-    <x-laraextend::img
+    <x-media::img
         :src="$item->image"
         :alt="$item->name"
         :width="300"
@@ -704,7 +591,7 @@ The `manifest.json` stores the **timestamp of the source file**. On every reques
 
 {{-- wire:key on <picture> (outermost element) --}}
 @foreach ($items as $item)
-    <x-laraextend::picture
+    <x-media::picture
         :src="$item->image"
         :alt="$item->name"
         :width="300"
@@ -720,34 +607,84 @@ The `manifest.json` stores the **timestamp of the source file**. On every reques
 In **local development** (`APP_ENV=local`), errors are rendered as HTML comments:
 
 ```html
-<!-- IMG ERROR: File not found: resources/images/missing.jpg -->
+<!-- MEDIA ERROR: File not found: resources/images/missing.jpg -->
 ```
 
 In **production**, missing images return an empty string — no visible errors for end users.
 
+### Memory-Safe Fallback (GD)
+
+When the GD driver detects that processing a large image would exceed the PHP memory limit, it automatically falls back to serving the original file. The rendered `<img>` receives metadata attributes:
+
+```html
+<img ... data-media-toolkit-status="original-fallback" data-media-toolkit-reason="memory-limit">
+```
+
+Possible `data-media-toolkit-reason` values:
+- `memory-limit` — optimization skipped proactively
+- `optimization-error` — optimization failed at runtime
+
 ---
 
 ## 🔀 GD vs. Imagick
-
-The package automatically detects the available driver:
 
 | Feature | GD | Imagick |
 |---------|:--:|:-------:|
 | JPEG | ✅ | ✅ |
 | PNG | ✅ | ✅ |
 | WebP | ✅ (if `imagewebp` available) | ✅ |
-| AVIF | ✅ (if `imageavif` available, PHP 8.1+) | ✅ (if Imagick compiled with AVIF) |
+| AVIF | ✅ (if `imageavif` available, PHP 8.1+) | ✅ (if compiled with AVIF) |
 
-> **Recommendation:** Imagick generally offers better quality and performance for large images. If available, it is automatically preferred.
+> Imagick is automatically preferred when available and generally offers better quality and performance for large images.
+
+---
+
+## 🆙 Upgrading from v1
+
+**Breaking Changes in v2:**
+
+| Area | v1 | v2 |
+|------|----|----|
+| Blade namespace | `<x-laraextend::img>` | `<x-media::img>` |
+| Output directory | `public/img/optimized/` | `public/media/optimized/` |
+| Config structure | flat keys | nested under `image.*` |
+| Config key `quality.webp` | `config('media-toolkit.quality.webp')` | `config('media-toolkit.image.quality.webp')` |
+| Config key `responsive.*` | `config('media-toolkit.responsive.*')` | `config('media-toolkit.image.responsive.*')` |
+| Config key `defaults.*` | `config('media-toolkit.defaults.*')` | `config('media-toolkit.image.defaults.*')` |
+| Artisan: clear cache | `media:img-clear` | `media:cache-clear` |
+| Artisan: warm cache | `media:img-warm` | `media:cache-warm` |
+| Error comment prefix | `IMG ERROR:` | `MEDIA ERROR:` |
+
+**Migration steps:**
+
+1. Update `config/media-toolkit.php` to the new nested structure (or re-publish it):
+   ```bash
+   php artisan vendor:publish --tag=media-toolkit-config --force
+   ```
+
+2. Clear the old cache directory:
+   ```bash
+   php artisan media:cache-clear
+   rm -rf public/img/optimized   # remove old directory manually if needed
+   ```
+
+3. Update `.gitignore`:
+   ```gitignore
+   # Remove:
+   /public/img/optimized/
+   # Add:
+   /public/media/optimized/
+   ```
+
+4. Update Blade templates — replace `<x-laraextend::*>` with `<x-media::*>`.
+   The helper functions (`img()`, `responsive_img()`, `picture()`, `img_url()`) are still available but now go through the new builder and are marked deprecated.
 
 ---
 
 ## 📂 .gitignore
 
-Add the optimization directory to your `.gitignore` — variants are generated automatically (adjust if you changed `output_dir`):
-
 ```gitignore
-/public/img/optimized/
+/public/media/optimized/
 ```
 
 ---
@@ -760,6 +697,7 @@ Contributions are welcome! Please fork the repository, create your feature branc
 git clone https://github.com/laraextend/media-toolkit.git
 cd media-toolkit
 composer install
+./vendor/bin/pest
 ```
 
 ---

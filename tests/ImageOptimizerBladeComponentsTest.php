@@ -1,17 +1,17 @@
 <?php
 
 use Illuminate\Support\Facades\Blade;
-use Laraextend\MediaToolkit\Components\Img;
-use Laraextend\MediaToolkit\Components\Picture;
-use Laraextend\MediaToolkit\Components\ResponsiveImg;
+use Laraextend\MediaToolkit\Components\Image\Img;
+use Laraextend\MediaToolkit\Components\Image\Picture;
+use Laraextend\MediaToolkit\Components\Image\ResponsiveImg;
 
 // ─────────────────────────────────────────────────────────────
-//  <x-laraextend::img>
+//  <x-media::img>
 // ─────────────────────────────────────────────────────────────
 
 test('img blade component renders optimized markup', function (): void {
     $html = Blade::render(
-        '<x-laraextend::img :src="$src" alt="Component image" :width="320" format="jpg" />',
+        '<x-media::img :src="$src" alt="Component image" :width="320" format="jpg" />',
         ['src' => $this->landscapeImage],
     );
 
@@ -38,7 +38,7 @@ test('img blade component forwards bag attributes including wire directives', fu
 
 test('img blade component forwards explicit extra-attributes', function (): void {
     $html = Blade::render(
-        '<x-laraextend::img :src="$src" alt="Image" :width="320" format="jpg" :extra-attributes="[\'wire:key\' => \'hero-image\', \'data-track\' => \'1\']" />',
+        '<x-media::img :src="$src" alt="Image" :width="320" format="jpg" :extra-attributes="[\'wire:key\' => \'hero-image\', \'data-track\' => \'1\']" />',
         ['src' => $this->landscapeImage],
     );
 
@@ -49,7 +49,7 @@ test('img blade component forwards explicit extra-attributes', function (): void
 
 test('extra-attributes override bag attributes with the same key on img', function (): void {
     $html = Blade::render(
-        '<x-laraextend::img :src="$src" alt="Image" :width="320" format="jpg" wire:key="from-bag" :extra-attributes="[\'wire:key\' => \'from-extra\']" />',
+        '<x-media::img :src="$src" alt="Image" :width="320" format="jpg" wire:key="from-bag" :extra-attributes="[\'wire:key\' => \'from-extra\']" />',
         ['src' => $this->landscapeImage],
     );
 
@@ -58,12 +58,12 @@ test('extra-attributes override bag attributes with the same key on img', functi
 });
 
 // ─────────────────────────────────────────────────────────────
-//  <x-laraextend::responsive-img>
+//  <x-media::responsive-img>
 // ─────────────────────────────────────────────────────────────
 
 test('responsive-img blade component renders srcset markup', function (): void {
     $html = Blade::render(
-        '<x-laraextend::responsive-img :src="$src" alt="Responsive" :width="400" format="jpg" />',
+        '<x-media::responsive-img :src="$src" alt="Responsive" :width="400" format="jpg" />',
         ['src' => $this->landscapeImage],
     );
 
@@ -74,7 +74,6 @@ test('responsive-img blade component renders srcset markup', function (): void {
 });
 
 test('responsive-img blade component forwards wire directives', function (): void {
-    // Use withAttributes() to simulate the Blade compiler populating the bag.
     $component = new ResponsiveImg(src: $this->landscapeImage, alt: 'Responsive', width: 400, format: 'jpg');
     $component->withAttributes(['wire:key' => 'responsive-item']);
     $html = $component->render();
@@ -83,12 +82,12 @@ test('responsive-img blade component forwards wire directives', function (): voi
 });
 
 // ─────────────────────────────────────────────────────────────
-//  <x-laraextend::picture>
+//  <x-media::picture>
 // ─────────────────────────────────────────────────────────────
 
 test('picture blade component renders picture markup', function (): void {
     $html = Blade::render(
-        '<x-laraextend::picture :src="$src" alt="Picture" :width="400" :formats="[\'jpg\']" fallback-format="jpg" />',
+        '<x-media::picture :src="$src" alt="Picture" :width="400" :formats="[\'jpg\']" fallback-format="jpg" />',
         ['src' => $this->landscapeImage],
     );
 
@@ -100,7 +99,6 @@ test('picture blade component renders picture markup', function (): void {
 });
 
 test('picture blade component forwards wire:key to picture element', function (): void {
-    // Use withAttributes() to simulate the Blade compiler populating the bag.
     $component = new Picture(
         src: $this->landscapeImage,
         alt: 'Picture',
@@ -113,14 +111,13 @@ test('picture blade component forwards wire:key to picture element', function ()
 
     // wire:key must appear on the <picture> opening tag (before the first >)
     $pictureOpenClose = strpos($html, '>');
-    $wireKeyPos = strpos($html, 'wire:key=');
+    $wireKeyPos       = strpos($html, 'wire:key=');
 
     expect($wireKeyPos)->not->toBeFalse();
     expect($wireKeyPos)->toBeLessThan($pictureOpenClose);
 });
 
 test('picture blade component wire:key appears exactly once', function (): void {
-    // Use withAttributes() to simulate the Blade compiler populating the bag.
     $component = new Picture(
         src: $this->landscapeImage,
         alt: 'Picture',
@@ -136,29 +133,29 @@ test('picture blade component wire:key appears exactly once', function (): void 
 
 test('picture extra-attributes go to img element not picture element', function (): void {
     $html = Blade::render(
-        '<x-laraextend::picture :src="$src" alt="Picture" :width="400" :formats="[\'jpg\']" fallback-format="jpg" :extra-attributes="[\'data-caption\' => \'My photo\']" />',
+        '<x-media::picture :src="$src" alt="Picture" :width="400" :formats="[\'jpg\']" fallback-format="jpg" :extra-attributes="[\'data-caption\' => \'My photo\']" />',
         ['src' => $this->landscapeImage],
     );
 
-    // data-caption should be on the <img>, not the <picture> opening tag
+    // data-caption should appear after the <picture> opening tag closes
     $pictureOpenClose = strpos($html, '>');
-    $captionPos = strpos($html, 'data-caption=');
+    $captionPos       = strpos($html, 'data-caption=');
 
     expect($captionPos)->not->toBeNull();
     expect($captionPos)->toBeGreaterThan($pictureOpenClose);
 });
 
 // ─────────────────────────────────────────────────────────────
-//  <x-laraextend::img-url>
+//  <x-media::img-url>
 // ─────────────────────────────────────────────────────────────
 
 test('img-url blade component returns an optimized url', function (): void {
     $url = Blade::render(
-        '<x-laraextend::img-url :src="$src" :width="400" format="jpg" />',
+        '<x-media::img-url :src="$src" :width="400" format="jpg" />',
         ['src' => $this->landscapeImage],
     );
 
     expect($url)
-        ->toContain('/img/optimized/')
+        ->toContain('/media/optimized/')
         ->toContain('.jpg');
 });

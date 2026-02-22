@@ -47,7 +47,7 @@
             "Laraextend\\MediaToolkit\\": "src/"
         },
         "files": [
-            "src/Helpers/img_helper.php"
+            "src/Helpers/media_helper.php"
         ]
     },
     "autoload-dev": {
@@ -59,7 +59,10 @@
         "laravel": {
             "providers": [
                 "Laraextend\\MediaToolkit\\MediaToolkitServiceProvider"
-            ]
+            ],
+            "aliases": {
+                "Media": "Laraextend\\MediaToolkit\\Facades\\Media"
+            }
         }
     },
     "config": {

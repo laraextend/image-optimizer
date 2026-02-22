@@ -3,8 +3,10 @@
 namespace Laraextend\MediaToolkit\Tests;
 
 use Illuminate\Support\Facades\File;
-use Laraextend\MediaToolkit\Helpers\ImageOptimizer;
+use Laraextend\MediaToolkit\Cache\ManifestCache;
 use Laraextend\MediaToolkit\MediaToolkitServiceProvider;
+use Laraextend\MediaToolkit\Processing\ImageProcessor;
+use Laraextend\MediaToolkit\Rendering\ImageHtmlRenderer;
 use Orchestra\Testbench\TestCase as OrchestraTestCase;
 
 abstract class TestCase extends OrchestraTestCase
@@ -36,7 +38,7 @@ abstract class TestCase extends OrchestraTestCase
         parent::setUp();
 
         config(['media-toolkit' => $this->defaultConfig()]);
-        $this->app->forgetInstance(ImageOptimizer::class);
+        $this->resetSingletons();
 
         $this->prepareFixtureImages();
         $this->cleanOutputDirectories();
@@ -53,27 +55,40 @@ abstract class TestCase extends OrchestraTestCase
         return require dirname(__DIR__).'/config/media-toolkit.php';
     }
 
-    protected function setPackageConfig(array $overrides): ImageOptimizer
+    /**
+     * Override package config at runtime and reset all cached singletons.
+     * The next call to Media::image() or any helper will pick up the new config.
+     */
+    protected function setPackageConfig(array $overrides): void
     {
         $merged = array_replace_recursive($this->defaultConfig(), $overrides);
         config(['media-toolkit' => $merged]);
-        $this->app->forgetInstance(ImageOptimizer::class);
-
-        return $this->app->make(ImageOptimizer::class);
+        $this->resetSingletons();
     }
 
-    protected function optimizer(): ImageOptimizer
+    /**
+     * Forget all singletons that capture config values at instantiation time,
+     * so that the next resolve picks up the currently active config.
+     */
+    protected function resetSingletons(): void
     {
-        return $this->app->make(ImageOptimizer::class);
+        $this->app->forgetInstance(ImageProcessor::class);
+        $this->app->forgetInstance(ManifestCache::class);
+        $this->app->forgetInstance(ImageHtmlRenderer::class);
     }
 
     protected function cleanOutputDirectories(): void
     {
-        $configuredDir = config('media-toolkit.output_dir', 'img/optimized');
-
+        // Legacy default (pre-v2) — kept so tests do not leave orphaned files
         File::deleteDirectory(public_path('img/optimized'));
-        File::deleteDirectory(public_path($configuredDir));
+
+        // Current defaults
+        File::deleteDirectory(public_path('media/optimized'));
         File::deleteDirectory(public_path('custom/optimized'));
+
+        // Whatever the config currently says
+        $configuredDir = config('media-toolkit.output_dir', 'media/optimized');
+        File::deleteDirectory(public_path($configuredDir));
     }
 
     protected function prepareFixtureImages(): void

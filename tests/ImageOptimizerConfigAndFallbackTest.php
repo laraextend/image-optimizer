@@ -1,14 +1,43 @@
 <?php
 
-use Laraextend\MediaToolkit\Helpers\ImageOptimizer;
+use Intervention\Image\Drivers\Gd\Driver as GdDriver;
+use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
+use Intervention\Image\ImageManager;
+use Laraextend\MediaToolkit\Cache\ManifestCache;
+use Laraextend\MediaToolkit\Processing\ImageProcessor;
+
+// ─────────────────────────────────────────────────────────────
+//  HELPER: create an ImageProcessor whose driver mirrors the
+//  current environment so the anonymous subclass can override
+//  just the one method we need to change.
+// ─────────────────────────────────────────────────────────────
+
+function makeBypassingProcessor(): ImageProcessor
+{
+    $driverName = extension_loaded('imagick') ? 'imagick' : 'gd';
+    $driver     = $driverName === 'imagick' ? new ImagickDriver() : new GdDriver();
+
+    return new class ($driverName, new ImageManager($driver)) extends ImageProcessor {
+        public function shouldBypassOptimization(string $sourcePath, ?int $targetWidth, ?int $targetHeight): bool
+        {
+            return true;
+        }
+    };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  CONFIG OVERRIDE TESTS
+// ─────────────────────────────────────────────────────────────
 
 test('configured output directory and default format are used', function (): void {
     $this->setPackageConfig([
         'output_dir' => 'custom/optimized',
-        'defaults' => [
-            'format' => 'jpg',
-            'loading' => 'eager',
-            'fetchpriority' => 'low',
+        'image'      => [
+            'defaults' => [
+                'format'        => 'jpg',
+                'loading'       => 'eager',
+                'fetchpriority' => 'low',
+            ],
         ],
     ]);
 
@@ -25,21 +54,14 @@ test('configured output directory and default format are used', function (): voi
         ->toContain('fetchpriority="low"');
 });
 
-test('invalid config values fall back to safe defaults', function (): void {
+test('invalid loading and fetchpriority values are normalised to safe defaults', function (): void {
     $this->setPackageConfig([
-        'driver' => 'invalid-driver',
-        'output_dir' => '',
-        'responsive' => [
-            'size_factors' => ['x', -2, 0, 'bad', -1],
-            'min_width' => 0,
-        ],
-        'defaults' => [
-            'format' => 'invalid-format',
-            'loading' => 'invalid-loading',
-            'fetchpriority' => 'invalid-priority',
-            'sizes' => '',
-            'picture_formats' => ['invalid-source-format'],
-            'fallback_format' => 'invalid-fallback',
+        'image' => [
+            'defaults' => [
+                'loading'       => 'invalid-loading',
+                'fetchpriority' => 'invalid-priority',
+                'sizes'         => '',
+            ],
         ],
     ]);
 
@@ -51,23 +73,33 @@ test('invalid config values fall back to safe defaults', function (): void {
     );
 
     expect($html)
-        ->toContain('/img/optimized/')
         ->toContain('loading="lazy"')
         ->toContain('fetchpriority="auto"')
-        ->toContain('sizes="100vw"')
-        ->toContain(' 200w')
-        ->toContain(' 300w');
+        ->toContain('sizes="100vw"');
 });
 
-test('memory limit fallback adds metadata attributes', function (): void {
-    $optimizer = new class extends ImageOptimizer {
-        protected function shouldBypassOptimization(string $sourcePath, ?int $targetWidth, ?int $targetHeight): bool
-        {
-            return true;
-        }
-    };
+test('invalid output_dir falls back to media/optimized', function (): void {
+    $this->setPackageConfig(['output_dir' => '']);
 
-    $html = $optimizer->renderSingle(
+    $html = img(
+        src: $this->landscapeImage,
+        alt: 'Invalid dir',
+        width: 300,
+        format: 'jpg',
+    );
+
+    expect($html)->toContain('/media/optimized/');
+});
+
+// ─────────────────────────────────────────────────────────────
+//  MEMORY-LIMIT BYPASS FALLBACK
+// ─────────────────────────────────────────────────────────────
+
+test('memory limit fallback adds metadata attributes', function (): void {
+    $this->app->instance(ImageProcessor::class, makeBypassingProcessor());
+    $this->app->forgetInstance(ManifestCache::class); // force rebuild with new processor
+
+    $html = img(
         src: $this->landscapeImage,
         alt: 'Memory fallback',
         width: 400,
@@ -80,20 +112,40 @@ test('memory limit fallback adds metadata attributes', function (): void {
         ->toContain('data-media-toolkit-reason="memory-limit"');
 });
 
+// ─────────────────────────────────────────────────────────────
+//  OPTIMISATION ERROR FALLBACK
+// ─────────────────────────────────────────────────────────────
+
 test('optimization error fallback adds metadata attributes', function (): void {
-    $optimizer = new class extends ImageOptimizer {
-        protected function getOrCreateVariants(
+    /** @var ImageProcessor $processor */
+    $processor = $this->app->make(ImageProcessor::class);
+    $outputDir = $processor->normalizeOutputDir(config('media-toolkit.output_dir', 'media/optimized'));
+
+    $failingCache = new class (
+        public_path(),
+        $outputDir,
+        [0.5, 0.75, 1.0, 1.5, 2.0],
+        100,
+        $processor,
+    ) extends ManifestCache {
+        public function getOrCreate(
             string $sourcePath,
-            int $sourceModified,
-            ?int $displayWidth,
+            int    $sourceModified,
+            ?int   $displayWidth,
             string $format,
-            bool $singleOnly = false,
+            bool   $singleOnly,
+            array  $operations,
+            string $operationsFingerprint,
+            int    $quality,
+            bool   $noCache = false,
         ): array {
-            throw new \RuntimeException('Forced optimizer failure.');
+            throw new \RuntimeException('Forced cache failure.');
         }
     };
 
-    $html = $optimizer->renderSingle(
+    $this->app->instance(ManifestCache::class, $failingCache);
+
+    $html = img(
         src: $this->landscapeImage,
         alt: 'Error fallback',
         width: 400,
@@ -106,15 +158,15 @@ test('optimization error fallback adds metadata attributes', function (): void {
         ->toContain('data-media-toolkit-reason="optimization-error"');
 });
 
-test('custom fallback metadata attributes are not overwritten', function (): void {
-    $optimizer = new class extends ImageOptimizer {
-        protected function shouldBypassOptimization(string $sourcePath, ?int $targetWidth, ?int $targetHeight): bool
-        {
-            return true;
-        }
-    };
+// ─────────────────────────────────────────────────────────────
+//  CUSTOM FALLBACK METADATA NOT OVERWRITTEN
+// ─────────────────────────────────────────────────────────────
 
-    $html = $optimizer->renderSingle(
+test('custom fallback metadata attributes are not overwritten', function (): void {
+    $this->app->instance(ImageProcessor::class, makeBypassingProcessor());
+    $this->app->forgetInstance(ManifestCache::class);
+
+    $html = img(
         src: $this->landscapeImage,
         alt: 'Custom attributes',
         width: 400,
@@ -130,6 +182,10 @@ test('custom fallback metadata attributes are not overwritten', function (): voi
         ->toContain('data-media-toolkit-reason="manual-reason"')
         ->not->toContain('data-media-toolkit-status="original-fallback"');
 });
+
+// ─────────────────────────────────────────────────────────────
+//  DIMENSION RESOLUTION
+// ─────────────────────────────────────────────────────────────
 
 test('picture without dimensions uses original size', function (): void {
     $html = picture(

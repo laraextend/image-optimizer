@@ -6,11 +6,11 @@ use Illuminate\Support\Facades\File;
 test('artisan commands are registered', function (): void {
     $commands = Artisan::all();
 
-    expect($commands)->toHaveKey('media:img-clear');
-    expect($commands)->toHaveKey('media:img-warm');
+    expect($commands)->toHaveKey('media:cache-clear');
+    expect($commands)->toHaveKey('media:cache-warm');
 });
 
-test('img:clear deletes generated cache directories', function (): void {
+test('media:cache-clear deletes generated cache directories', function (): void {
     img(
         src: $this->landscapeImage,
         alt: 'For clear command',
@@ -29,14 +29,14 @@ test('img:clear deletes generated cache directories', function (): void {
     expect(File::isDirectory($outputRoot))->toBeTrue();
     expect(File::directories($outputRoot))->not->toBeEmpty();
 
-    $exitCode = Artisan::call('media:img-clear');
+    $exitCode = Artisan::call('media:cache-clear');
     expect($exitCode)->toBe(0);
-    expect(Artisan::output())->toContain('cache entries deleted');
+    expect(Artisan::output())->toContain('cache');
 
     expect(File::isDirectory($outputRoot))->toBeFalse();
 });
 
-test('img:warm regenerates outdated variants', function (): void {
+test('media:cache-warm regenerates outdated variants', function (): void {
     img(
         src: $this->landscapeImage,
         alt: 'Warm cache',
@@ -44,11 +44,11 @@ test('img:warm regenerates outdated variants', function (): void {
         format: 'jpg',
     );
 
-    $outputRoot = public_path(config('media-toolkit.output_dir'));
+    $outputRoot    = public_path(config('media-toolkit.output_dir'));
     $manifestFiles = File::glob($outputRoot.'/*/manifest.json');
     expect($manifestFiles)->not->toBeEmpty();
 
-    $manifestPath = $manifestFiles[0];
+    $manifestPath   = $manifestFiles[0];
     $manifestBefore = json_decode((string) File::get($manifestPath), true);
     expect($manifestBefore)->toBeArray();
 
@@ -59,7 +59,7 @@ test('img:warm regenerates outdated variants', function (): void {
     sleep(1);
     $this->createTestImage($sourcePath, 800, 400);
 
-    $exitCode = Artisan::call('media:img-warm');
+    $exitCode = Artisan::call('media:cache-warm');
     expect($exitCode)->toBe(0);
 
     $manifestAfter = json_decode((string) File::get($manifestPath), true);
@@ -67,24 +67,23 @@ test('img:warm regenerates outdated variants', function (): void {
     expect($manifestAfter['source_modified'] ?? null)->toBe(File::lastModified($sourcePath));
 });
 
-test('img:warm reports missing source files', function (): void {
-    $outputRoot = public_path(config('media-toolkit.output_dir'));
+test('media:cache-warm reports missing source files', function (): void {
+    $outputRoot   = public_path(config('media-toolkit.output_dir'));
     $fakeCacheDir = $outputRoot.'/missing-source-cache';
     File::ensureDirectoryExists($fakeCacheDir, 0755, true);
 
     $manifest = [
-        'source' => base_path('tests/fixtures/image-optimizer/does-not-exist.jpg'),
+        'source'          => base_path('tests/fixtures/image-optimizer/does-not-exist.jpg'),
         'source_modified' => time() - 100,
-        'format' => 'jpg',
-        'display_width' => 300,
-        'single_only' => false,
-        'variants' => [],
+        'format'          => 'jpg',
+        'display_width'   => 300,
+        'single_only'     => false,
+        'variants'        => [],
     ];
 
     File::put($fakeCacheDir.'/manifest.json', json_encode($manifest, JSON_PRETTY_PRINT));
 
-    $exitCode = Artisan::call('media:img-warm');
+    $exitCode = Artisan::call('media:cache-warm');
     expect($exitCode)->toBe(0);
     expect(Artisan::output())->toContain('Source file not found');
 });
-

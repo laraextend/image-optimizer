@@ -109,7 +109,7 @@ test('img_url returns paths for optimized and original variants', function (): v
     );
 
     expect(Str::startsWith($optimized, '/'))->toBeTrue();
-    expect($optimized)->toContain('.jpg')->toContain('/img/optimized/');
+    expect($optimized)->toContain('.jpg')->toContain('/media/optimized/');
 
     expect(Str::startsWith($original, '/'))->toBeTrue();
     expect($original)->toContain('/originals/');
@@ -128,7 +128,6 @@ test('missing source returns error comment for img and empty string for url', fu
         format: 'jpg',
     );
 
-    expect($html === '' || str_contains($html, 'IMG ERROR: File not found'))->toBeTrue();
+    expect($html === '' || str_contains($html, 'MEDIA ERROR: File not found'))->toBeTrue();
     expect($url)->toBe('');
 });
-
