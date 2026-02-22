@@ -1,6 +1,6 @@
 <?php
 
-namespace Laraextend\ImageOptimizer\Helpers;
+namespace Laraextend\MediaToolkit\Helpers;
 
 use Illuminate\Support\Facades\File;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
@@ -96,7 +96,7 @@ class ImageOptimizer
 
     public function __construct()
     {
-        $config = config('image-optimizer', []);
+        $config = config('media-toolkit', []);
         if (! is_array($config)) {
             $config = [];
         }
@@ -902,12 +902,12 @@ class ImageOptimizer
 
     protected function withFallbackMetadata(array $attributes, string $reason): array
     {
-        if (! array_key_exists('data-image-optimizer-status', $attributes)) {
-            $attributes['data-image-optimizer-status'] = 'original-fallback';
+        if (! array_key_exists('data-media-toolkit-status', $attributes)) {
+            $attributes['data-media-toolkit-status'] = 'original-fallback';
         }
 
-        if (! array_key_exists('data-image-optimizer-reason', $attributes)) {
-            $attributes['data-image-optimizer-reason'] = $reason;
+        if (! array_key_exists('data-media-toolkit-reason', $attributes)) {
+            $attributes['data-media-toolkit-reason'] = $reason;
         }
 
         return $attributes;

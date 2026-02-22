@@ -1,15 +1,17 @@
 <p align="center">
-  <a href="https://packagist.org/packages/laraextend/image-optimizer"><img src="https://img.shields.io/packagist/v/laraextend/image-optimizer.svg?style=flat-square" alt="Latest Version on Packagist"></a>
-  <a href="https://packagist.org/packages/laraextend/image-optimizer"><img src="https://img.shields.io/packagist/dt/laraextend/image-optimizer.svg?style=flat-square" alt="Total Downloads"></a>
-  <a href="https://packagist.org/packages/laraextend/image-optimizer"><img src="https://img.shields.io/packagist/php-v/laraextend/image-optimizer.svg?style=flat-square" alt="PHP Version"></a>
+  <a href="https://packagist.org/packages/laraextend/media-toolkit"><img src="https://img.shields.io/packagist/v/laraextend/media-toolkit.svg?style=flat-square" alt="Latest Version on Packagist"></a>
+  <a href="https://packagist.org/packages/laraextend/media-toolkit"><img src="https://img.shields.io/packagist/dt/laraextend/media-toolkit.svg?style=flat-square" alt="Total Downloads"></a>
+  <a href="https://packagist.org/packages/laraextend/media-toolkit"><img src="https://img.shields.io/packagist/php-v/laraextend/media-toolkit.svg?style=flat-square" alt="PHP Version"></a>
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square" alt="License"></a>
 </p>
 
-# Laravel Image Optimizer
+# Laravel Media Toolkit
 
-**Automatic image optimization, responsive variants and next-gen formats for Laravel — ready to use directly in Blade.**
+**A comprehensive Laravel media toolkit for automatic image optimization, responsive variants, next-gen formats and more — ready to use directly in Blade.**
 
-`laraextend/image-optimizer` handles the heavy lifting for you: images are automatically resized, compressed, converted to modern formats (WebP, AVIF) and rendered as responsive `<img>` or `<picture>` tags. Comes with smart caching, Artisan commands, simple Blade helpers and Blade components.
+`laraextend/media-toolkit` handles the heavy lifting for you: images are automatically resized, compressed, converted to modern formats (WebP, AVIF) and rendered as responsive `<img>` or `<picture>` tags. Comes with smart caching, Artisan commands, simple Blade helpers and Blade components.
+
+> **Roadmap:** Future releases will extend the toolkit to cover animated images (GIF/APNG/WebP animated), vector graphics (SVG), audio and video processing.
 
 ---
 
@@ -20,8 +22,8 @@
 - **📐 Automatic Responsive Variants** — Generates 5 breakpoint sizes (0.5×, 0.75×, 1×, 1.5×, 2×) with `srcset`
 - **🎨 Next-Gen Formats** — WebP, AVIF, JPEG, PNG — with automatic fallback if the server lacks support
 - **⚡ Smart Caching** — Manifest-based cache with automatic invalidation when source files change
-- **🔧 Artisan Commands** — `img:clear` and `img:warm` for cache management
-- **⚙️ Configurable** — Publish `config/image-optimizer.php` to customize quality, formats, breakpoints and more
+- **🔧 Artisan Commands** — `media:img-clear` and `media:img-warm` for cache management
+- **⚙️ Configurable** — Publish `config/media-toolkit.php` to customize quality, formats, breakpoints and more
 - **🏎️ Performance-Optimized** — Lazy loading, `fetchpriority`, `decoding="async"` by default
 - **🛡️ Memory-Safe Fallback** — Automatically serves original images when GD memory would be exceeded
 - **📦 Zero Config** — Works immediately after installation, no configuration required
@@ -47,7 +49,7 @@
 ### 1. Install the package via Composer
 
 ```bash
-composer require laraextend/image-optimizer
+composer require laraextend/media-toolkit
 ```
 
 > The ServiceProvider is registered automatically via Laravel's Auto-Discovery.
@@ -61,17 +63,17 @@ That's it. No config files, no migrations, no additional steps needed.
 If you want to customize defaults, publish the config file:
 
 ```bash
-php artisan vendor:publish --tag=image-optimizer-config
+php artisan vendor:publish --tag=media-toolkit-config
 ```
 
-Published file: `config/image-optimizer.php`
+Published file: `config/media-toolkit.php`
 
 Default config schema:
 
 ```php
 return [
-    'driver'     => env('IMAGE_OPTIMIZER_DRIVER', 'auto'),
-    'output_dir' => env('IMAGE_OPTIMIZER_OUTPUT_DIR', 'img/optimized'),
+    'driver'     => env('MEDIA_TOOLKIT_DRIVER', 'auto'),
+    'output_dir' => env('MEDIA_TOOLKIT_OUTPUT_DIR', 'img/optimized'),
 
     'responsive' => [
         'size_factors' => [0.5, 0.75, 1.0, 1.5, 2.0],
@@ -100,8 +102,8 @@ return [
 Example `.env` overrides:
 
 ```dotenv
-IMAGE_OPTIMIZER_DRIVER=auto
-IMAGE_OPTIMIZER_OUTPUT_DIR=img/optimized
+MEDIA_TOOLKIT_DRIVER=auto
+MEDIA_TOOLKIT_OUTPUT_DIR=img/optimized
 ```
 
 ---
@@ -316,7 +318,7 @@ Blade components forward all attributes from the Blade attribute bag automatical
 ### Attribute routing
 
 | Component | Bag attributes applied to |
-|-----------|--------------------------|
+|-----------|--------------------------
 | `<x-laraextend::img>` | `<img>` |
 | `<x-laraextend::responsive-img>` | `<img>` |
 | `<x-laraextend::picture>` | `<picture>` (outermost element) |
@@ -373,18 +375,18 @@ For `<picture>`, bag attributes land on the outer `<picture>` tag so that `wire:
 After publishing the config file, you can customize all default values:
 
 ```bash
-php artisan vendor:publish --tag=image-optimizer-config
+php artisan vendor:publish --tag=media-toolkit-config
 ```
 
-**`config/image-optimizer.php`:**
+**`config/media-toolkit.php`:**
 
 ```php
 return [
     // Image processing driver: 'auto' (recommended), 'gd', or 'imagick'
-    'driver'     => env('IMAGE_OPTIMIZER_DRIVER', 'auto'),
+    'driver'     => env('MEDIA_TOOLKIT_DRIVER', 'auto'),
 
     // Output directory relative to public/
-    'output_dir' => env('IMAGE_OPTIMIZER_OUTPUT_DIR', 'img/optimized'),
+    'output_dir' => env('MEDIA_TOOLKIT_OUTPUT_DIR', 'img/optimized'),
 
     // Responsive breakpoints
     'responsive' => [
@@ -515,10 +517,10 @@ In that case, the package automatically falls back to the copied original image 
 Fallback output is marked on the rendered `<img>`:
 
 ```html
-<img ... data-image-optimizer-status="original-fallback" data-image-optimizer-reason="memory-limit">
+<img ... data-media-toolkit-status="original-fallback" data-media-toolkit-reason="memory-limit">
 ```
 
-Possible `data-image-optimizer-reason` values:
+Possible `data-media-toolkit-reason` values:
 - `memory-limit` — optimization skipped proactively due to memory estimate
 - `optimization-error` — optimization failed and fallback was applied
 
@@ -531,7 +533,7 @@ Possible `data-image-optimizer-reason` values:
 Deletes all optimized image variants from `public/<output_dir>/` (default: `public/img/optimized/`):
 
 ```bash
-php artisan img:clear
+php artisan media:img-clear
 ```
 
 ```
@@ -543,7 +545,7 @@ php artisan img:clear
 Checks all cached variants and regenerates outdated ones (when the source file has changed):
 
 ```bash
-php artisan img:warm
+php artisan media:img-warm
 ```
 
 ```
@@ -552,14 +554,14 @@ Checking cache for outdated images...
 ⚠ Source file not found: resources/images/deleted-image.jpg
 ```
 
-> **Tip:** Run `img:warm` after every deployment to ensure all variants are up to date.
+> **Tip:** Run `media:img-warm` after every deployment to ensure all variants are up to date.
 
 ### In Your Deployment Pipeline
 
 ```bash
 # In your deployment script:
-php artisan img:clear    # Optional: rebuild everything from scratch
-php artisan img:warm     # Or: only regenerate outdated variants
+php artisan media:img-clear    # Optional: rebuild everything from scratch
+php artisan media:img-warm     # Or: only regenerate outdated variants
 ```
 
 ---
@@ -755,8 +757,8 @@ Add the optimization directory to your `.gitignore` — variants are generated a
 Contributions are welcome! Please fork the repository, create your feature branch and submit a pull request.
 
 ```bash
-git clone https://github.com/laraextend/image-optimizer.git
-cd image-optimizer
+git clone https://github.com/laraextend/media-toolkit.git
+cd media-toolkit
 composer install
 ```
 

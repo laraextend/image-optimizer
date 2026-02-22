@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'driver' => env('IMAGE_OPTIMIZER_DRIVER', 'auto'),
-    'output_dir' => env('IMAGE_OPTIMIZER_OUTPUT_DIR', 'img/optimized'),
+    'driver' => env('MEDIA_TOOLKIT_DRIVER', 'auto'),
+    'output_dir' => env('MEDIA_TOOLKIT_OUTPUT_DIR', 'img/optimized'),
 
     'responsive' => [
         'size_factors' => [0.5, 0.75, 1.0, 1.5, 2.0],

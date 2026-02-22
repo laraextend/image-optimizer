@@ -1,8 +1,10 @@
 {
-    "name": "laraextend/image-optimizer",
-    "description": "Automatische Bildoptimierung, Responsive-Varianten und Next-Gen-Formate (WebP, AVIF) für Laravel Blade — mit intelligentem Caching und Artisan-Commands.",
+    "name": "laraextend/media-toolkit",
+    "description": "A comprehensive Laravel media toolkit for processing images, animated images, vector graphics, audio and video — with automatic optimization, responsive variants, next-gen formats (WebP, AVIF), smart caching and Artisan commands.",
     "keywords": [
         "laravel",
+        "media",
+        "toolkit",
         "image",
         "optimizer",
         "webp",
@@ -11,6 +13,10 @@
         "picture",
         "srcset",
         "compression",
+        "audio",
+        "video",
+        "svg",
+        "animated",
         "blade",
         "intervention",
         "cache",
@@ -38,7 +44,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Laraextend\\ImageOptimizer\\": "src/"
+            "Laraextend\\MediaToolkit\\": "src/"
         },
         "files": [
             "src/Helpers/img_helper.php"
@@ -46,13 +52,13 @@
     },
     "autoload-dev": {
         "psr-4": {
-        "Laraextend\\ImageOptimizer\\Tests\\": "tests/"
+            "Laraextend\\MediaToolkit\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Laraextend\\ImageOptimizer\\ImageOptimizerServiceProvider"
+                "Laraextend\\MediaToolkit\\MediaToolkitServiceProvider"
             ]
         }
     },

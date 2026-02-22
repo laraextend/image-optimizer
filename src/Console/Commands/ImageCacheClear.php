@@ -1,13 +1,13 @@
 <?php
 
-namespace Laraextend\ImageOptimizer\Console\Commands;
+namespace Laraextend\MediaToolkit\Console\Commands;
 
-use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
+use Laraextend\MediaToolkit\Helpers\ImageOptimizer;
 use Illuminate\Console\Command;
 
 class ImageCacheClear extends Command
 {
-    protected $signature = 'img:clear';
+    protected $signature = 'media:img-clear';
     protected $description = 'Delete all optimized image variants';
 
     public function handle(ImageOptimizer $optimizer): int

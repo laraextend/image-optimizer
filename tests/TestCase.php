@@ -1,10 +1,10 @@
 <?php
 
-namespace Laraextend\ImageOptimizer\Tests;
+namespace Laraextend\MediaToolkit\Tests;
 
 use Illuminate\Support\Facades\File;
-use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
-use Laraextend\ImageOptimizer\ImageOptimizerServiceProvider;
+use Laraextend\MediaToolkit\Helpers\ImageOptimizer;
+use Laraextend\MediaToolkit\MediaToolkitServiceProvider;
 use Orchestra\Testbench\TestCase as OrchestraTestCase;
 
 abstract class TestCase extends OrchestraTestCase
@@ -20,7 +20,7 @@ abstract class TestCase extends OrchestraTestCase
     protected function getPackageProviders($app): array
     {
         return [
-            ImageOptimizerServiceProvider::class,
+            MediaToolkitServiceProvider::class,
         ];
     }
 
@@ -35,7 +35,7 @@ abstract class TestCase extends OrchestraTestCase
     {
         parent::setUp();
 
-        config(['image-optimizer' => $this->defaultConfig()]);
+        config(['media-toolkit' => $this->defaultConfig()]);
         $this->app->forgetInstance(ImageOptimizer::class);
 
         $this->prepareFixtureImages();
@@ -50,13 +50,13 @@ abstract class TestCase extends OrchestraTestCase
 
     protected function defaultConfig(): array
     {
-        return require dirname(__DIR__).'/config/image-optimizer.php';
+        return require dirname(__DIR__).'/config/media-toolkit.php';
     }
 
     protected function setPackageConfig(array $overrides): ImageOptimizer
     {
         $merged = array_replace_recursive($this->defaultConfig(), $overrides);
-        config(['image-optimizer' => $merged]);
+        config(['media-toolkit' => $merged]);
         $this->app->forgetInstance(ImageOptimizer::class);
 
         return $this->app->make(ImageOptimizer::class);
@@ -69,7 +69,7 @@ abstract class TestCase extends OrchestraTestCase
 
     protected function cleanOutputDirectories(): void
     {
-        $configuredDir = config('image-optimizer.output_dir', 'img/optimized');
+        $configuredDir = config('media-toolkit.output_dir', 'img/optimized');
 
         File::deleteDirectory(public_path('img/optimized'));
         File::deleteDirectory(public_path($configuredDir));

@@ -1,13 +1,13 @@
 <?php
 
-namespace Laraextend\ImageOptimizer\Console\Commands;
+namespace Laraextend\MediaToolkit\Console\Commands;
 
-use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
+use Laraextend\MediaToolkit\Helpers\ImageOptimizer;
 use Illuminate\Console\Command;
 
 class ImageCacheWarm extends Command
 {
-    protected $signature = 'img:warm';
+    protected $signature = 'media:img-warm';
     protected $description = 'Regenerate outdated image variants';
 
     public function handle(ImageOptimizer $optimizer): int

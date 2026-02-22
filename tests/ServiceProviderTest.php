@@ -1,10 +1,10 @@
 <?php
 
-use Laraextend\ImageOptimizer\Components\Img;
-use Laraextend\ImageOptimizer\Components\ImgUrl;
-use Laraextend\ImageOptimizer\Components\Picture;
-use Laraextend\ImageOptimizer\Components\ResponsiveImg;
-use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
+use Laraextend\MediaToolkit\Components\Img;
+use Laraextend\MediaToolkit\Components\ImgUrl;
+use Laraextend\MediaToolkit\Components\Picture;
+use Laraextend\MediaToolkit\Components\ResponsiveImg;
+use Laraextend\MediaToolkit\Helpers\ImageOptimizer;
 
 test('image optimizer is registered as singleton', function (): void {
     $instance1 = app(ImageOptimizer::class);
@@ -14,8 +14,8 @@ test('image optimizer is registered as singleton', function (): void {
 });
 
 test('config is merged from package', function (): void {
-    expect(config('image-optimizer'))->not->toBeNull();
-    expect(config('image-optimizer.quality'))->toBeArray();
+    expect(config('media-toolkit'))->not->toBeNull();
+    expect(config('media-toolkit.quality'))->toBeArray();
 });
 
 test('blade component namespace laraextend is registered', function (): void {

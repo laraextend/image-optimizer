@@ -1,6 +1,6 @@
 <?php
 
-use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
+use Laraextend\MediaToolkit\Helpers\ImageOptimizer;
 
 test('configured output directory and default format are used', function (): void {
     $this->setPackageConfig([
@@ -76,8 +76,8 @@ test('memory limit fallback adds metadata attributes', function (): void {
 
     expect($html)
         ->toContain('/originals/')
-        ->toContain('data-image-optimizer-status="original-fallback"')
-        ->toContain('data-image-optimizer-reason="memory-limit"');
+        ->toContain('data-media-toolkit-status="original-fallback"')
+        ->toContain('data-media-toolkit-reason="memory-limit"');
 });
 
 test('optimization error fallback adds metadata attributes', function (): void {
@@ -102,8 +102,8 @@ test('optimization error fallback adds metadata attributes', function (): void {
 
     expect($html)
         ->toContain('/originals/')
-        ->toContain('data-image-optimizer-status="original-fallback"')
-        ->toContain('data-image-optimizer-reason="optimization-error"');
+        ->toContain('data-media-toolkit-status="original-fallback"')
+        ->toContain('data-media-toolkit-reason="optimization-error"');
 });
 
 test('custom fallback metadata attributes are not overwritten', function (): void {
@@ -120,15 +120,15 @@ test('custom fallback metadata attributes are not overwritten', function (): voi
         width: 400,
         format: 'jpg',
         attributes: [
-            'data-image-optimizer-status' => 'manual',
-            'data-image-optimizer-reason' => 'manual-reason',
+            'data-media-toolkit-status' => 'manual',
+            'data-media-toolkit-reason' => 'manual-reason',
         ],
     );
 
     expect($html)
-        ->toContain('data-image-optimizer-status="manual"')
-        ->toContain('data-image-optimizer-reason="manual-reason"')
-        ->not->toContain('data-image-optimizer-status="original-fallback"');
+        ->toContain('data-media-toolkit-status="manual"')
+        ->toContain('data-media-toolkit-reason="manual-reason"')
+        ->not->toContain('data-media-toolkit-status="original-fallback"');
 });
 
 test('picture without dimensions uses original size', function (): void {

@@ -1,9 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Blade;
-use Laraextend\ImageOptimizer\Components\Img;
-use Laraextend\ImageOptimizer\Components\Picture;
-use Laraextend\ImageOptimizer\Components\ResponsiveImg;
+use Laraextend\MediaToolkit\Components\Img;
+use Laraextend\MediaToolkit\Components\Picture;
+use Laraextend\MediaToolkit\Components\ResponsiveImg;
 
 // ─────────────────────────────────────────────────────────────
 //  <x-laraextend::img>

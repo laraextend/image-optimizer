@@ -1,10 +1,10 @@
 <?php
 
-namespace Laraextend\ImageOptimizer\Components;
+namespace Laraextend\MediaToolkit\Components;
 
 use Closure;
 use Illuminate\View\Component;
-use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
+use Laraextend\MediaToolkit\Helpers\ImageOptimizer;
 
 class ImgUrl extends Component
 {

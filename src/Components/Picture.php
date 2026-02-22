@@ -1,10 +1,10 @@
 <?php
 
-namespace Laraextend\ImageOptimizer\Components;
+namespace Laraextend\MediaToolkit\Components;
 
 use Illuminate\View\ComponentAttributeBag;
 use Illuminate\View\Component;
-use Laraextend\ImageOptimizer\Helpers\ImageOptimizer;
+use Laraextend\MediaToolkit\Helpers\ImageOptimizer;
 
 class Picture extends Component
 {

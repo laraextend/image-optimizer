@@ -1,5 +1,5 @@
 <?php
 
-use Laraextend\ImageOptimizer\Tests\TestCase;
+use Laraextend\MediaToolkit\Tests\TestCase;
 
 uses(TestCase::class)->in(__DIR__);
