@@ -45,11 +45,18 @@ class ManifestCache
         if (! $noCache && File::exists($manifestPath)) {
             $manifest = json_decode(File::get($manifestPath), true);
 
-            if (($manifest['source_modified'] ?? 0) === $sourceModified) {
+            // Guard against partial reads during a concurrent write (race condition).
+            // With atomic writes below this should never be null, but we check defensively.
+            if (is_array($manifest) && ($manifest['source_modified'] ?? 0) === $sourceModified) {
                 return $manifest['variants'] ?? [];
             }
 
-            File::deleteDirectory($cacheDir);
+            if (is_array($manifest)) {
+                // Valid manifest but source has changed — delete and regenerate.
+                File::deleteDirectory($cacheDir);
+            }
+            // If $manifest is null the file was likely being written concurrently;
+            // fall through to createVariants() which will overwrite it atomically.
         }
 
         return $this->createVariants(
@@ -134,7 +141,11 @@ class ManifestCache
             'variants'                => $variants,
         ];
 
-        File::put($cacheDir . '/manifest.json', json_encode($manifest, JSON_PRETTY_PRINT));
+        // Atomic write: write to a temp file and rename so concurrent readers
+        // never see a partially-written manifest (rename() is atomic on POSIX).
+        $tmpPath = $cacheDir . '/manifest.tmp.' . getmypid();
+        File::put($tmpPath, json_encode($manifest, JSON_PRETTY_PRINT));
+        rename($tmpPath, $cacheDir . '/manifest.json');
 
         return $variants;
     }
@@ -170,6 +181,40 @@ class ManifestCache
         }
 
         return $widths;
+    }
+
+    /**
+     * Return cached variants if they already exist and are still valid — without generating new ones.
+     *
+     * Used as a cache-first guard so that already-processed images are always served
+     * from cache, even when shouldBypassOptimization() would return true for the current request.
+     *
+     * Returns null on cache miss (manifest absent, invalid JSON, or source timestamp mismatch).
+     */
+    public function getCached(
+        string $sourcePath,
+        int    $sourceModified,
+        ?int   $displayWidth,
+        string $format,
+        bool   $singleOnly,
+        string $operationsFingerprint,
+    ): ?array {
+        $hash         = $this->buildCacheHash($sourcePath, $displayWidth, $format, $singleOnly, $operationsFingerprint);
+        $manifestPath = $this->publicPath . '/' . $this->outputDir . '/' . $hash . '/manifest.json';
+
+        if (! File::exists($manifestPath)) {
+            return null;
+        }
+
+        $manifest = json_decode(File::get($manifestPath), true);
+
+        if (! is_array($manifest) || ($manifest['source_modified'] ?? 0) !== $sourceModified) {
+            return null;
+        }
+
+        $variants = $manifest['variants'] ?? [];
+
+        return empty($variants) ? null : $variants;
     }
 
     // ─────────────────────────────────────────────────────────────

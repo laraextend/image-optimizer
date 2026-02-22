@@ -365,6 +365,19 @@ class ImageBuilder extends BaseBuilder
 
         [$resolvedWidth, $resolvedHeight] = $dimensions;
 
+        $sourceModified = File::lastModified($sourcePath);
+
+        // Cache-first: return cached URL directly without a memory check.
+        if (! $this->disableCache) {
+            $cached = $this->cache->getCached($sourcePath, $sourceModified, $resolvedWidth, $format, true, $fingerprint);
+            if ($cached !== null) {
+                $targetWidth = $resolvedWidth ?? $cached[0]['width'];
+
+                return $this->renderer->findClosestVariant($cached, $targetWidth)['url'] ?? '';
+            }
+        }
+
+        // Cache miss — check available memory before attempting to process.
         if ($this->processor->shouldBypassOptimization($sourcePath, $resolvedWidth, $resolvedHeight)) {
             $this->logAndRecord('memory_limit', [
                 'display_width'          => $resolvedWidth,
@@ -383,8 +396,6 @@ class ImageBuilder extends BaseBuilder
 
             return $this->cache->copyOriginal($sourcePath);
         }
-
-        $sourceModified = File::lastModified($sourcePath);
 
         try {
             $variants = $this->cache->getOrCreate(
@@ -472,6 +483,23 @@ class ImageBuilder extends BaseBuilder
         $fingerprint = $this->buildOperationsFingerprint();
         [$resolvedWidth, $resolvedHeight] = $this->resolveDimensionsFromSource($sourcePath);
 
+        $sourceModified = File::lastModified($sourcePath);
+
+        // Cache-first: if variants were already generated, serve them directly —
+        // no memory check needed for reading an existing cached file.
+        if (! $this->disableCache) {
+            $cached = $this->cache->getCached($sourcePath, $sourceModified, $resolvedWidth, $format, true, $fingerprint);
+            if ($cached !== null) {
+                $variant = $this->renderer->findClosestVariant($cached, $resolvedWidth ?? $cached[0]['width']);
+                $height  = ($resolvedHeight === null && $resolvedWidth !== null && $variant)
+                    ? (int) round($resolvedWidth * ($variant['height'] / $variant['width']))
+                    : $resolvedHeight;
+
+                return $this->renderer->buildSimpleImgTag($variant['url'], $alt, $resolvedWidth, $height, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
+            }
+        }
+
+        // Cache miss — check available memory before attempting to process.
         if ($this->processor->shouldBypassOptimization($sourcePath, $resolvedWidth, $resolvedHeight)) {
             return $this->buildMemoryLimitOutput(
                 $sourcePath, $alt, $resolvedWidth, $resolvedHeight,
@@ -479,8 +507,6 @@ class ImageBuilder extends BaseBuilder
                 $format, $quality, $fingerprint, true,
             );
         }
-
-        $sourceModified = File::lastModified($sourcePath);
 
         try {
             $variants = $this->cache->getOrCreate(
@@ -528,6 +554,17 @@ class ImageBuilder extends BaseBuilder
         $fingerprint           = $this->buildOperationsFingerprint();
         [$resolvedWidth, $resolvedHeight] = $this->resolveDimensionsFromSource($sourcePath);
 
+        $sourceModified = File::lastModified($sourcePath);
+
+        // Cache-first: serve already-processed variants without a memory check.
+        if (! $this->disableCache) {
+            $cached = $this->cache->getCached($sourcePath, $sourceModified, $resolvedWidth, $format, false, $fingerprint);
+            if ($cached !== null) {
+                return $this->renderer->buildResponsiveImgTag($cached, $alt, $resolvedWidth, $resolvedHeight, $class, $resolvedLoading, $resolvedFetchpriority, $resolvedSizes, $id, $attributes);
+            }
+        }
+
+        // Cache miss — check available memory before attempting to process.
         if ($this->processor->shouldBypassOptimization($sourcePath, $resolvedWidth, $resolvedHeight)) {
             return $this->buildMemoryLimitOutput(
                 $sourcePath, $alt, $resolvedWidth, $resolvedHeight,
@@ -535,8 +572,6 @@ class ImageBuilder extends BaseBuilder
                 $format, $quality, $fingerprint, false,
             );
         }
-
-        $sourceModified = File::lastModified($sourcePath);
 
         try {
             $variants = $this->cache->getOrCreate(
@@ -591,6 +626,41 @@ class ImageBuilder extends BaseBuilder
             $this->normalizeFormat($this->pictureFallback, $defaultFallbackFormat)
         );
 
+        $sourceModified = File::lastModified($sourcePath);
+
+        // Cache-first: check if the fallback format is already cached.
+        // If yes, load all formats from cache and skip the memory check entirely.
+        if (! $this->disableCache) {
+            $cachedFallback = $this->cache->getCached($sourcePath, $sourceModified, $resolvedWidth, $resolvedFallback, false, $fingerprint);
+            if ($cachedFallback !== null) {
+                $cachedFormatVariants = [];
+                foreach ($resolvedFormats as $fmt) {
+                    $fmtCached = $this->cache->getCached($sourcePath, $sourceModified, $resolvedWidth, $fmt, false, $fingerprint);
+                    if ($fmtCached !== null) {
+                        $cachedFormatVariants[$fmt] = $fmtCached;
+                    }
+                }
+
+                return $this->renderer->buildPictureTag(
+                    $cachedFormatVariants,
+                    $cachedFallback,
+                    $resolvedFallback,
+                    $alt,
+                    $resolvedWidth,
+                    $resolvedHeight,
+                    $class,
+                    $this->pictureImgClass,
+                    $this->pictureSourceClass,
+                    $resolvedLoading,
+                    $resolvedFetchpriority,
+                    $resolvedSizes,
+                    $id,
+                    $attributes,
+                );
+            }
+        }
+
+        // Cache miss — check available memory before attempting to process.
         if ($this->processor->shouldBypassOptimization($sourcePath, $resolvedWidth, $resolvedHeight)) {
             $pictureFmt = $this->processor->safeFormat($this->resolveFormat());
             return $this->buildMemoryLimitOutput(
@@ -599,8 +669,6 @@ class ImageBuilder extends BaseBuilder
                 $pictureFmt, $this->resolveQuality($pictureFmt), $fingerprint, false,
             );
         }
-
-        $sourceModified = File::lastModified($sourcePath);
 
         // Generate variants per modern format
         $formatVariants = [];

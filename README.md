@@ -508,6 +508,27 @@ The `manifest.json` stores the **last-modified timestamp** of the source file. O
 
 **You never need to clear the cache manually when replacing images** — changes are detected automatically.
 
+### Concurrent Request Safety
+
+Manifest files are written **atomically** using a temp-file-then-rename pattern:
+
+1. Image variants are processed and saved to disk
+2. The manifest is written to a temporary file (`manifest.tmp.<pid>`)
+3. The temp file is **renamed** to `manifest.json` — an atomic operation on POSIX systems (Linux, macOS)
+
+This guarantees that concurrent readers never encounter partially-written JSON, even when multiple requests try to generate the same image simultaneously.
+
+### Memory Check Order — Cache Always Wins
+
+The memory-bypass check (`on_memory_limit`) happens **after** the cache check, not before:
+
+1. **Cache exists?** → Serve immediately — no processing, no memory check needed
+2. **Cache miss** → Check if GD can process the image within the PHP memory limit
+3. **Memory too low** → Show placeholder / fallback per `on_memory_limit` setting
+4. **Memory ok** → Process, cache, and serve
+
+**Result:** A cached image is **always served from disk** regardless of current PHP memory availability. The `on_memory_limit` fallback only activates when generating a variant for the first time.
+
 ---
 
 ## 🛠️ Practical Examples
