@@ -116,7 +116,7 @@ test('img_url returns paths for optimized and original variants', function (): v
     expect(public_path(ltrim($original, '/')))->toBeFile();
 });
 
-test('missing source returns error comment for img and empty string for url', function (): void {
+test('missing source returns placeholder img by default and empty string for url', function (): void {
     $html = img(
         src: 'tests/fixtures/image-optimizer/missing.jpg',
         alt: 'Missing',
@@ -128,6 +128,7 @@ test('missing source returns error comment for img and empty string for url', fu
         format: 'jpg',
     );
 
-    expect($html === '' || str_contains($html, 'MEDIA ERROR: File not found'))->toBeTrue();
+    // Default on_not_found = 'placeholder' → inline SVG data URI
+    expect($html)->toContain('<img')->toContain('data:image/svg+xml;base64,');
     expect($url)->toBe('');
 });

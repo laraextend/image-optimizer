@@ -9,6 +9,8 @@ use Laraextend\MediaToolkit\Builders\ImageBuilder;
 use Laraextend\MediaToolkit\Cache\ManifestCache;
 use Laraextend\MediaToolkit\Console\Commands\CacheClear;
 use Laraextend\MediaToolkit\Console\Commands\CacheWarm;
+use Laraextend\MediaToolkit\Console\Commands\ProcessPending;
+use Laraextend\MediaToolkit\Failures\FailureRegistry;
 use Laraextend\MediaToolkit\Processing\ImageProcessor;
 use Laraextend\MediaToolkit\Rendering\ImageHtmlRenderer;
 
@@ -45,6 +47,10 @@ class MediaToolkitServiceProvider extends ServiceProvider
 
         $this->app->singleton(ImageHtmlRenderer::class);
 
+        $this->app->singleton(FailureRegistry::class, function (): FailureRegistry {
+            return new FailureRegistry(storage_path('media-toolkit/failures.json'));
+        });
+
         // ── 'media-toolkit' facade accessor ────────────────────────────────
         // Resolves to a lightweight factory object whose image() method
         // returns a fresh ImageBuilder per call.
@@ -75,6 +81,7 @@ class MediaToolkitServiceProvider extends ServiceProvider
             $this->commands([
                 CacheClear::class,
                 CacheWarm::class,
+                ProcessPending::class,
             ]);
 
             $this->publishes([

@@ -3,6 +3,7 @@
 namespace Laraextend\MediaToolkit\Builders;
 
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Laraextend\MediaToolkit\Cache\ManifestCache;
 use Laraextend\MediaToolkit\DTOs\CropOptions;
 use Laraextend\MediaToolkit\DTOs\ResizeOptions;
@@ -11,6 +12,7 @@ use Laraextend\MediaToolkit\Enums\ImageMode;
 use Laraextend\MediaToolkit\Enums\ImageOutputType;
 use Laraextend\MediaToolkit\Enums\WatermarkPosition;
 use Laraextend\MediaToolkit\Exceptions\MediaBuilderException;
+use Laraextend\MediaToolkit\Failures\FailureRegistry;
 use Laraextend\MediaToolkit\Operations\Image\CropOperation;
 use Laraextend\MediaToolkit\Operations\Image\FilterOperation;
 use Laraextend\MediaToolkit\Operations\Image\FitOperation;
@@ -265,8 +267,9 @@ class ImageBuilder extends BaseBuilder
     ): static {
         $this->assertTransformationsAllowed('watermark');
 
-        $positionEnum   = WatermarkPosition::from($position);
-        $absolutePath   = base_path($source);
+        $positionEnum = WatermarkPosition::from($position);
+        $absolutePath = $this->resolveWatermarkPath($source);
+
         $this->operations[] = new WatermarkOperation(
             new WatermarkOptions($source, $positionEnum, $padding, max(1, min(100, $opacity))),
             $absolutePath,
@@ -337,9 +340,17 @@ class ImageBuilder extends BaseBuilder
      */
     public function url(): string
     {
+        $this->assertSafePathSegment($this->path);
+
         $sourcePath = base_path($this->path);
 
         if (! File::exists($sourcePath)) {
+            $this->logAndRecord('not_found', []);
+            $notFoundMode = config('media-toolkit.image.errors.on_not_found', 'placeholder');
+            if ($notFoundMode === 'exception') {
+                throw new MediaBuilderException("Media file not found: {$this->path}");
+            }
+
             return '';
         }
 
@@ -355,6 +366,21 @@ class ImageBuilder extends BaseBuilder
         [$resolvedWidth, $resolvedHeight] = $dimensions;
 
         if ($this->processor->shouldBypassOptimization($sourcePath, $resolvedWidth, $resolvedHeight)) {
+            $this->logAndRecord('memory_limit', [
+                'display_width'          => $resolvedWidth,
+                'format'                 => $format,
+                'quality'                => $quality,
+                'operations_fingerprint' => $fingerprint,
+                'single_only'            => true,
+            ]);
+            $memMode = config('media-toolkit.image.errors.on_memory_limit', 'placeholder');
+            if ($memMode === 'exception') {
+                throw new MediaBuilderException("Memory limit exceeded: cannot process {$this->path}");
+            }
+            if ($memMode !== 'original') {
+                return '';
+            }
+
             return $this->cache->copyOriginal($sourcePath);
         }
 
@@ -372,8 +398,20 @@ class ImageBuilder extends BaseBuilder
                 quality:                $quality,
                 noCache:                $this->disableCache,
             );
-        } catch (Throwable) {
-            return $this->cache->copyOriginal($sourcePath);
+        } catch (Throwable $e) {
+            $this->logAndRecord('error', [
+                'display_width'          => $resolvedWidth,
+                'format'                 => $format,
+                'quality'                => $quality,
+                'operations_fingerprint' => $fingerprint,
+                'single_only'            => true,
+            ]);
+            $errorMode = config('media-toolkit.image.errors.on_error', 'placeholder');
+            if ($errorMode === 'exception') {
+                throw new MediaBuilderException("Media processing failed: {$this->path}");
+            }
+
+            return '';
         }
 
         if (empty($variants)) {
@@ -411,10 +449,12 @@ class ImageBuilder extends BaseBuilder
 
     protected function renderSingle(string $alt, string $class, ?string $id, array $attributes): string
     {
+        $this->assertSafePathSegment($this->path);
+
         $sourcePath = base_path($this->path);
 
         if (! File::exists($sourcePath)) {
-            return $this->renderer->error($this->path);
+            return $this->buildNotFoundOutput($alt, null, null);
         }
 
         $resolvedLoading      = $this->resolveLoading();
@@ -433,10 +473,11 @@ class ImageBuilder extends BaseBuilder
         [$resolvedWidth, $resolvedHeight] = $this->resolveDimensionsFromSource($sourcePath);
 
         if ($this->processor->shouldBypassOptimization($sourcePath, $resolvedWidth, $resolvedHeight)) {
-            $url        = $this->cache->copyOriginal($sourcePath);
-            $attributes = $this->renderer->withFallbackMetadata($attributes, 'memory-limit');
-
-            return $this->renderer->buildSimpleImgTag($url, $alt, $resolvedWidth, $resolvedHeight, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
+            return $this->buildMemoryLimitOutput(
+                $sourcePath, $alt, $resolvedWidth, $resolvedHeight,
+                $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes,
+                $format, $quality, $fingerprint, true,
+            );
         }
 
         $sourceModified = File::lastModified($sourcePath);
@@ -453,15 +494,12 @@ class ImageBuilder extends BaseBuilder
                 quality:                $quality,
                 noCache:                $this->disableCache,
             );
-        } catch (Throwable) {
-            $url        = $this->cache->copyOriginal($sourcePath);
-            $attributes = $this->renderer->withFallbackMetadata($attributes, 'optimization-error');
-
-            return $this->renderer->buildSimpleImgTag($url, $alt, $resolvedWidth, $resolvedHeight, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
+        } catch (Throwable $e) {
+            return $this->buildProcessingErrorOutput($alt, $resolvedWidth, $resolvedHeight, $format, $quality, $fingerprint, true);
         }
 
         if (empty($variants)) {
-            return $this->renderer->error($this->path);
+            return $this->buildProcessingErrorOutput($alt, $resolvedWidth, $resolvedHeight, $format, $quality, $fingerprint, true);
         }
 
         $variant = $this->renderer->findClosestVariant($variants, $resolvedWidth ?? $variants[0]['width']);
@@ -474,10 +512,12 @@ class ImageBuilder extends BaseBuilder
 
     protected function renderResponsive(string $alt, string $class, ?string $id, array $attributes): string
     {
+        $this->assertSafePathSegment($this->path);
+
         $sourcePath = base_path($this->path);
 
         if (! File::exists($sourcePath)) {
-            return $this->renderer->error($this->path);
+            return $this->buildNotFoundOutput($alt, null, null);
         }
 
         $resolvedLoading       = $this->resolveLoading();
@@ -489,10 +529,11 @@ class ImageBuilder extends BaseBuilder
         [$resolvedWidth, $resolvedHeight] = $this->resolveDimensionsFromSource($sourcePath);
 
         if ($this->processor->shouldBypassOptimization($sourcePath, $resolvedWidth, $resolvedHeight)) {
-            $url        = $this->cache->copyOriginal($sourcePath);
-            $attributes = $this->renderer->withFallbackMetadata($attributes, 'memory-limit');
-
-            return $this->renderer->buildSimpleImgTag($url, $alt, $resolvedWidth, $resolvedHeight, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
+            return $this->buildMemoryLimitOutput(
+                $sourcePath, $alt, $resolvedWidth, $resolvedHeight,
+                $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes,
+                $format, $quality, $fingerprint, false,
+            );
         }
 
         $sourceModified = File::lastModified($sourcePath);
@@ -509,15 +550,12 @@ class ImageBuilder extends BaseBuilder
                 quality:                $quality,
                 noCache:                $this->disableCache,
             );
-        } catch (Throwable) {
-            $url        = $this->cache->copyOriginal($sourcePath);
-            $attributes = $this->renderer->withFallbackMetadata($attributes, 'optimization-error');
-
-            return $this->renderer->buildSimpleImgTag($url, $alt, $resolvedWidth, $resolvedHeight, $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
+        } catch (Throwable $e) {
+            return $this->buildProcessingErrorOutput($alt, $resolvedWidth, $resolvedHeight, $format, $quality, $fingerprint, false);
         }
 
         if (empty($variants)) {
-            return $this->renderer->error($this->path);
+            return $this->buildProcessingErrorOutput($alt, $resolvedWidth, $resolvedHeight, $format, $quality, $fingerprint, false);
         }
 
         return $this->renderer->buildResponsiveImgTag($variants, $alt, $resolvedWidth, $resolvedHeight, $class, $resolvedLoading, $resolvedFetchpriority, $resolvedSizes, $id, $attributes);
@@ -525,16 +563,17 @@ class ImageBuilder extends BaseBuilder
 
     protected function renderPicture(string $alt, string $class, ?string $id, array $attributes): string
     {
+        $this->assertSafePathSegment($this->path);
+
         $sourcePath = base_path($this->path);
 
         if (! File::exists($sourcePath)) {
-            return $this->renderer->error($this->path);
+            return $this->buildNotFoundOutput($alt, null, null);
         }
 
         $resolvedLoading       = $this->resolveLoading();
         $resolvedFetchpriority = $this->resolveFetchpriority();
         $resolvedSizes         = $this->resolveSizes($this->responsiveSizes);
-        $quality               = $this->resolveQuality($this->resolveFormat());
         $fingerprint           = $this->buildOperationsFingerprint();
         [$resolvedWidth, $resolvedHeight] = $this->resolveDimensionsFromSource($sourcePath);
 
@@ -553,10 +592,12 @@ class ImageBuilder extends BaseBuilder
         );
 
         if ($this->processor->shouldBypassOptimization($sourcePath, $resolvedWidth, $resolvedHeight)) {
-            $url        = $this->cache->copyOriginal($sourcePath);
-            $attributes = $this->renderer->withFallbackMetadata($attributes, 'memory-limit');
-
-            return $this->renderer->buildSimpleImgTag($url, $alt, $resolvedWidth, $resolvedHeight, $this->pictureImgClass ?: $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
+            $pictureFmt = $this->processor->safeFormat($this->resolveFormat());
+            return $this->buildMemoryLimitOutput(
+                $sourcePath, $alt, $resolvedWidth, $resolvedHeight,
+                $this->pictureImgClass ?: $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes,
+                $pictureFmt, $this->resolveQuality($pictureFmt), $fingerprint, false,
+            );
         }
 
         $sourceModified = File::lastModified($sourcePath);
@@ -601,14 +642,11 @@ class ImageBuilder extends BaseBuilder
                 noCache:                $this->disableCache,
             );
         } catch (Throwable) {
-            $url        = $this->cache->copyOriginal($sourcePath);
-            $attributes = $this->renderer->withFallbackMetadata($attributes, 'optimization-error');
-
-            return $this->renderer->buildSimpleImgTag($url, $alt, $resolvedWidth, $resolvedHeight, $this->pictureImgClass ?: $class, $resolvedLoading, $resolvedFetchpriority, $id, $attributes);
+            return $this->buildProcessingErrorOutput($alt, $resolvedWidth, $resolvedHeight);
         }
 
         if (empty($fallbackVariants) && empty($formatVariants)) {
-            return $this->renderer->error($this->path);
+            return $this->buildProcessingErrorOutput($alt, $resolvedWidth, $resolvedHeight);
         }
 
         return $this->renderer->buildPictureTag(
@@ -729,5 +767,294 @@ class ImageBuilder extends BaseBuilder
         $this->operations[] = new FilterOperation($type, $params);
 
         return $this;
+    }
+
+    /**
+     * Resolve the absolute filesystem path for a watermark source.
+     *
+     * Accepts three formats:
+     *   - Full URL  (http:// or https://)  → parsed path, resolved via public_path()
+     *   - Web path  (starts with /)        → resolved via public_path()  (e.g. from ->url())
+     *   - Relative path                    → resolved via base_path()    (default)
+     *
+     * @throws MediaBuilderException  if the path contains traversal sequences or null bytes
+     */
+    protected function resolveWatermarkPath(string $source): string
+    {
+        if (str_starts_with($source, 'http://') || str_starts_with($source, 'https://')) {
+            // Extract and validate the URL path component separately.
+            $urlPath = parse_url($source, PHP_URL_PATH) ?? $source;
+            $this->assertNoTraversal($urlPath);
+            $resolved = public_path(ltrim($urlPath, '/'));
+            $this->assertSafeResolvedPath($resolved, public_path());
+
+            return $resolved;
+        }
+
+        // Validate the raw input before any path resolution so that string-prefix
+        // checks in assertSafeResolvedPath cannot be tricked by un-normalised ".."
+        // sequences (e.g. "/../../etc/passwd" starts with the allowed root as a string).
+        $this->assertNoTraversal($source);
+
+        if (str_starts_with($source, '/')) {
+            $resolved = public_path(ltrim($source, '/'));
+            $this->assertSafeResolvedPath($resolved, public_path());
+
+            return $resolved;
+        }
+
+        $this->assertSafePathSegment($source);  // also checks extension + control chars
+        $resolved = base_path($source);
+        $this->assertSafeResolvedPath($resolved, base_path());
+
+        return $resolved;
+    }
+
+    /**
+     * Reject any string that contains directory-traversal sequences or null/control bytes.
+     * Used as a fast, pre-resolution guard on raw path inputs.
+     *
+     * @throws MediaBuilderException
+     */
+    private function assertNoTraversal(string $path): void
+    {
+        if (preg_match('/[\x00\r\n]/', $path) || preg_match('#(^|[/\\\\])\.\.([/\\\\]|$)#', $path)) {
+            throw new MediaBuilderException('Invalid path: directory traversal is not allowed.');
+        }
+    }
+
+    /** Recognized image file extensions that the package is allowed to process. */
+    private const ALLOWED_IMAGE_EXTENSIONS = [
+        'jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'tiff', 'tif',
+    ];
+
+    /**
+     * Reject path segments that contain directory-traversal sequences, null bytes,
+     * control characters (CRLF — prevents log injection), and enforce an
+     * image-extension whitelist.
+     *
+     * @throws MediaBuilderException
+     */
+    private function assertSafePathSegment(string $segment): void
+    {
+        // Null bytes, newlines and carriage returns in a path are always malicious.
+        if (preg_match('/[\x00\r\n]/', $segment)) {
+            throw new MediaBuilderException('Invalid path: control characters are not allowed.');
+        }
+
+        // Block directory traversal sequences.
+        if (preg_match('#(^|[/\\\\])\.\.([/\\\\]|$)#', $segment)) {
+            throw new MediaBuilderException('Invalid path: directory traversal is not allowed.');
+        }
+
+        // Enforce image-extension whitelist.
+        $ext = strtolower(pathinfo($segment, PATHINFO_EXTENSION));
+        if ($ext !== '' && ! in_array($ext, self::ALLOWED_IMAGE_EXTENSIONS, true)) {
+            throw new MediaBuilderException(
+                "Invalid file type: '.{$ext}' is not an allowed image format."
+            );
+        }
+    }
+
+    /**
+     * Ensure a resolved absolute path is confined within an allowed root directory.
+     *
+     * Uses realpath() when the file exists; falls back to string prefix check
+     * when the file does not yet exist (variant output paths).
+     *
+     * @throws MediaBuilderException
+     */
+    private function assertSafeResolvedPath(string $resolved, string $allowedRoot): void
+    {
+        $real = realpath($resolved);
+        $root = realpath($allowedRoot) ?: rtrim($allowedRoot, '/\\');
+
+        if ($real !== false) {
+            // File exists — check the canonicalized path.
+            if (! str_starts_with($real, $root . DIRECTORY_SEPARATOR) && $real !== $root) {
+                throw new MediaBuilderException('Invalid path: directory traversal is not allowed.');
+            }
+        } else {
+            // File does not yet exist — check the string representation.
+            $normalised = str_replace('\\', '/', $resolved);
+            $rootSlash  = rtrim(str_replace('\\', '/', $root), '/') . '/';
+            if (! str_starts_with($normalised, $rootSlash)) {
+                throw new MediaBuilderException('Invalid path: directory traversal is not allowed.');
+            }
+        }
+    }
+
+    /**
+     * Build the fallback output for a missing source file.
+     * Behaviour is controlled by config('media-toolkit.image.errors.on_not_found').
+     *
+     * Modes:
+     *   'placeholder' (default) → inline SVG <img> with "Media could not be found."
+     *   'broken'                → <img> pointing to the missing src (browser broken-icon)
+     *   'exception'             → throws MediaBuilderException
+     */
+    protected function buildNotFoundOutput(string $alt, ?int $width, ?int $height): string
+    {
+        $this->logAndRecord('not_found', []);
+
+        $mode = config('media-toolkit.image.errors.on_not_found', 'placeholder');
+
+        return match ($mode) {
+            'exception' => throw new MediaBuilderException("Media file not found: {$this->path}"),
+            'broken'    => $this->renderer->buildBrokenImg($this->path, $alt),
+            default     => $this->renderer->buildPlaceholderImg(
+                $width,
+                $height,
+                (string) config('media-toolkit.image.errors.not_found_text', 'Media could not be found.'),
+                (string) config('media-toolkit.image.errors.not_found_color', '#f87171'),
+                $alt,
+            ),
+        };
+    }
+
+    /**
+     * Build the fallback output when image processing fails.
+     * Behaviour is controlled by config('media-toolkit.image.errors.on_error').
+     *
+     * Modes:
+     *   'placeholder' (default) → inline SVG <img> with "Media could not be displayed!"
+     *   'broken'                → <img> pointing to the missing src (browser broken-icon)
+     *   'exception'             → throws MediaBuilderException
+     */
+    protected function buildProcessingErrorOutput(
+        string $alt,
+        ?int   $width,
+        ?int   $height,
+        string $format      = 'webp',
+        int    $quality     = 80,
+        string $fingerprint = '',
+        bool   $singleOnly  = true,
+    ): string {
+        $this->logAndRecord('error', [
+            'display_width'          => $width,
+            'format'                 => $format,
+            'quality'                => $quality,
+            'operations_fingerprint' => $fingerprint,
+            'single_only'            => $singleOnly,
+        ]);
+
+        $mode = config('media-toolkit.image.errors.on_error', 'placeholder');
+
+        return match ($mode) {
+            'exception' => throw new MediaBuilderException("Media processing failed: {$this->path}"),
+            'broken'    => $this->renderer->buildBrokenImg($this->path, $alt),
+            default     => $this->renderer->buildPlaceholderImg(
+                $width,
+                $height,
+                (string) config('media-toolkit.image.errors.error_text', 'Media could not be displayed!'),
+                (string) config('media-toolkit.image.errors.error_color', '#f87171'),
+                $alt,
+            ),
+        };
+    }
+
+    /**
+     * Build the fallback output when GD skips processing due to memory constraints.
+     * Behaviour is controlled by config('media-toolkit.image.errors.on_memory_limit').
+     *
+     * Modes:
+     *   'placeholder' (default) → inline SVG <img> with "Media will be displayed shortly."
+     *   'original'              → copy & serve the raw source file unchanged
+     *   'broken'                → <img> pointing to the source path (browser broken-icon)
+     *   'exception'             → throws MediaBuilderException
+     */
+    protected function buildMemoryLimitOutput(
+        string  $sourcePath,
+        string  $alt,
+        ?int    $width,
+        ?int    $height,
+        string  $class,
+        string  $resolvedLoading,
+        string  $resolvedFetchpriority,
+        ?string $id,
+        array   $attributes,
+        string  $format      = 'webp',
+        int     $quality     = 80,
+        string  $fingerprint = '',
+        bool    $singleOnly  = true,
+    ): string {
+        $this->logAndRecord('memory_limit', [
+            'display_width'          => $width,
+            'format'                 => $format,
+            'quality'                => $quality,
+            'operations_fingerprint' => $fingerprint,
+            'single_only'            => $singleOnly,
+        ]);
+
+        $mode = config('media-toolkit.image.errors.on_memory_limit', 'placeholder');
+
+        if ($mode === 'exception') {
+            throw new MediaBuilderException("Memory limit exceeded: cannot process {$this->path}");
+        }
+
+        if ($mode === 'placeholder') {
+            return $this->renderer->buildPlaceholderImg(
+                $width,
+                $height,
+                (string) config('media-toolkit.image.errors.memory_limit_text', 'Media will be displayed shortly.'),
+                (string) config('media-toolkit.image.errors.memory_limit_color', '#9ca3af'),
+                $alt,
+            );
+        }
+
+        if ($mode === 'broken') {
+            return $this->renderer->buildBrokenImg($sourcePath, $alt);
+        }
+
+        // default: 'original' — serve the unprocessed source file
+        $url        = $this->cache->copyOriginal($sourcePath);
+        $attributes = $this->renderer->withFallbackMetadata($attributes, 'memory-limit');
+
+        return $this->renderer->buildSimpleImgTag(
+            $url, $alt, $width, $height, $class,
+            $resolvedLoading, $resolvedFetchpriority, $id, $attributes
+        );
+    }
+
+    /**
+     * Write a structured log entry and record the failure in the registry.
+     *
+     * @param  string  $reason  'not_found' | 'error' | 'memory_limit'
+     * @param  array   $params  Retry parameters (empty for not_found)
+     */
+    private function logAndRecord(string $reason, array $params): void
+    {
+        $config = config('media-toolkit.image.logging', []);
+
+        if (empty($config['enabled'])) {
+            return;
+        }
+
+        $level   = $config['level'][$reason] ?? 'warning';
+        $channel = $config['channel'] ?? null;
+
+        $context = [
+            'path'   => $this->path,
+            'reason' => $reason,
+        ];
+
+        if (! empty($params)) {
+            $context['params'] = $params;
+        }
+
+        // Strip control characters (CRLF, null bytes) to prevent log injection.
+        $safePath = str_replace(["\r", "\n", "\0", "\t"], ' ', $this->path);
+
+        $logger = $channel ? Log::channel($channel) : Log::getFacadeRoot();
+        $logger->$level("[media-toolkit] {$reason}: {$safePath}", $context);
+
+        // Not found entries are not worth retrying — no params stored.
+        $registryParams = $reason === 'not_found' ? [] : $params;
+
+        try {
+            app(FailureRegistry::class)->record($this->path, $reason, $registryParams);
+        } catch (Throwable) {
+            // Registry write failures must never disrupt normal rendering.
+        }
     }
 }

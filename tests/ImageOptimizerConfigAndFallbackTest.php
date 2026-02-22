@@ -95,9 +95,25 @@ test('invalid output_dir falls back to media/optimized', function (): void {
 //  MEMORY-LIMIT BYPASS FALLBACK
 // ─────────────────────────────────────────────────────────────
 
-test('memory limit fallback adds metadata attributes', function (): void {
+test('memory limit default mode shows inline SVG placeholder', function (): void {
     $this->app->instance(ImageProcessor::class, makeBypassingProcessor());
     $this->app->forgetInstance(ManifestCache::class); // force rebuild with new processor
+
+    $html = img(
+        src: $this->landscapeImage,
+        alt: 'Memory fallback',
+        width: 400,
+        format: 'jpg',
+    );
+
+    expect($html)->toContain('<img')->toContain('data:image/svg+xml;base64,');
+});
+
+test('memory limit with original mode adds metadata attributes', function (): void {
+    $this->setPackageConfig(['image' => ['errors' => ['on_memory_limit' => 'original']]]);
+
+    $this->app->instance(ImageProcessor::class, makeBypassingProcessor());
+    $this->app->forgetInstance(ManifestCache::class);
 
     $html = img(
         src: $this->landscapeImage,
@@ -112,11 +128,57 @@ test('memory limit fallback adds metadata attributes', function (): void {
         ->toContain('data-media-toolkit-reason="memory-limit"');
 });
 
+test('memory limit with placeholder mode shows inline SVG', function (): void {
+    $this->setPackageConfig(['image' => ['errors' => ['on_memory_limit' => 'placeholder']]]);
+
+    $this->app->instance(ImageProcessor::class, makeBypassingProcessor());
+    $this->app->forgetInstance(ManifestCache::class);
+
+    $html = img(
+        src: $this->landscapeImage,
+        alt: 'Memory placeholder',
+        width: 400,
+        format: 'jpg',
+    );
+
+    expect($html)->toContain('<img')->toContain('data:image/svg+xml;base64,');
+});
+
+test('memory limit with broken mode shows img with original source path', function (): void {
+    $this->setPackageConfig(['image' => ['errors' => ['on_memory_limit' => 'broken']]]);
+
+    $this->app->instance(ImageProcessor::class, makeBypassingProcessor());
+    $this->app->forgetInstance(ManifestCache::class);
+
+    $html = img(
+        src: $this->landscapeImage,
+        alt: 'Memory broken',
+        width: 400,
+        format: 'jpg',
+    );
+
+    expect($html)->toContain('<img')->toContain($this->landscapeImage);
+});
+
+test('memory limit with exception mode throws MediaBuilderException', function (): void {
+    $this->setPackageConfig(['image' => ['errors' => ['on_memory_limit' => 'exception']]]);
+
+    $this->app->instance(ImageProcessor::class, makeBypassingProcessor());
+    $this->app->forgetInstance(ManifestCache::class);
+
+    expect(fn () => img(
+        src: $this->landscapeImage,
+        alt: 'Memory exception',
+        width: 400,
+        format: 'jpg',
+    ))->toThrow(\Laraextend\MediaToolkit\Exceptions\MediaBuilderException::class);
+});
+
 // ─────────────────────────────────────────────────────────────
 //  OPTIMISATION ERROR FALLBACK
 // ─────────────────────────────────────────────────────────────
 
-test('optimization error fallback adds metadata attributes', function (): void {
+test('optimization error shows placeholder img by default', function (): void {
     /** @var ImageProcessor $processor */
     $processor = $this->app->make(ImageProcessor::class);
     $outputDir = $processor->normalizeOutputDir(config('media-toolkit.output_dir', 'media/optimized'));
@@ -152,10 +214,8 @@ test('optimization error fallback adds metadata attributes', function (): void {
         format: 'jpg',
     );
 
-    expect($html)
-        ->toContain('/originals/')
-        ->toContain('data-media-toolkit-status="original-fallback"')
-        ->toContain('data-media-toolkit-reason="optimization-error"');
+    // Default on_error = 'placeholder' → inline SVG data URI with "Image coming soon"
+    expect($html)->toContain('<img')->toContain('data:image/svg+xml;base64,');
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -163,6 +223,7 @@ test('optimization error fallback adds metadata attributes', function (): void {
 // ─────────────────────────────────────────────────────────────
 
 test('custom fallback metadata attributes are not overwritten', function (): void {
+    $this->setPackageConfig(['image' => ['errors' => ['on_memory_limit' => 'original']]]);
     $this->app->instance(ImageProcessor::class, makeBypassingProcessor());
     $this->app->forgetInstance(ManifestCache::class);
 

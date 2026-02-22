@@ -186,6 +186,20 @@ Media::image('photo.jpg')
 
 Position values: `'top-left'` `'top-center'` `'top-right'` `'center-left'` `'center'` `'center-right'` `'bottom-left'` `'bottom-center'` `'bottom-right'`
 
+**The `source` parameter accepts multiple formats:**
+
+```php
+// Relative path (resolved via base_path())
+->watermark('resources/images/logo.png', 'bottom-right')
+
+// Web path — as returned by ->url() (resolved via public_path())
+$logoUrl = Media::image('resources/images/logo.png')->resize(width: 200)->url();
+->watermark($logoUrl, 'bottom-right', 10, 80)
+
+// Absolute filesystem path
+->watermark('/var/www/html/storage/watermarks/logo.png', 'center')
+```
+
 ---
 
 ## 🖼️ Output Methods
@@ -604,25 +618,127 @@ The `manifest.json` stores the **last-modified timestamp** of the source file. O
 
 ## ⚠️ Error Handling
 
-In **local development** (`APP_ENV=local`), errors are rendered as HTML comments:
+Error handling behaviour is configurable per error type in `config/media-toolkit.php`:
 
-```html
-<!-- MEDIA ERROR: File not found: resources/images/missing.jpg -->
+```php
+'image' => [
+    'errors' => [
+        'on_not_found'    => env('MEDIA_ON_NOT_FOUND',    'placeholder'),  // file does not exist
+        'on_error'        => env('MEDIA_ON_ERROR',        'placeholder'),  // processing failed
+        'on_memory_limit' => env('MEDIA_ON_MEMORY_LIMIT', 'placeholder'),  // GD memory bypass
+
+        // Placeholder label text per error type
+        'not_found_text'     => 'Media could not be found.',
+        'error_text'         => 'Media could not be displayed!',
+        'memory_limit_text'  => 'Media will be displayed shortly.',
+
+        // Placeholder background colour per error type
+        'not_found_color'    => '#f87171',   // red-400
+        'error_color'        => '#f87171',   // red-400
+        'memory_limit_color' => '#9ca3af',   // gray-400
+    ],
+],
 ```
 
-In **production**, missing images return an empty string — no visible errors for end users.
+### Modes
+
+| Mode | `html()` returns | `url()` returns |
+|------|-----------------|-----------------|
+| `'placeholder'` | Inline SVG `<img>` with label text | `''` (empty string) |
+| `'broken'` | `<img src="original-path">` — browser shows broken-image icon | `''` (empty string) |
+| `'exception'` | Throws `MediaBuilderException` | Throws `MediaBuilderException` |
+| `'original'` *(memory-limit only)* | Serve the unprocessed source file | URL of source file copy |
+
+Default values: `on_not_found=placeholder`, `on_error=placeholder`, `on_memory_limit=placeholder`.
+
+**Override via `.env`:**
+
+```env
+MEDIA_ON_NOT_FOUND=placeholder        # placeholder | broken | exception
+MEDIA_ON_ERROR=placeholder            # placeholder | broken | exception
+MEDIA_ON_MEMORY_LIMIT=placeholder     # placeholder | original | broken | exception
+```
 
 ### Memory-Safe Fallback (GD)
 
-When the GD driver detects that processing a large image would exceed the PHP memory limit, it automatically falls back to serving the original file. The rendered `<img>` receives metadata attributes:
+When the GD driver detects that processing a large image would exceed the PHP memory limit, the behaviour is controlled by `on_memory_limit` (default: `'placeholder'`).
 
-```html
-<img ... data-media-toolkit-status="original-fallback" data-media-toolkit-reason="memory-limit">
+Setting `MEDIA_ON_MEMORY_LIMIT=original` serves the raw source file unchanged with `data-media-toolkit-status="original-fallback"` and `data-media-toolkit-reason="memory-limit"` attributes on the `<img>`.
+
+---
+
+## 📋 Logging & Failure Registry
+
+Every error (not found, processing failure, memory bypass) is written to the Laravel application log and recorded in a local failure registry for offline retry.
+
+### Log Configuration
+
+```php
+'image' => [
+    'logging' => [
+        'enabled' => env('MEDIA_LOGGING_ENABLED', true),
+
+        // null = Laravel's default log channel (LOG_CHANNEL in .env)
+        // Set to 'single', 'daily', 'stack', etc. to use a dedicated channel
+        'channel' => env('MEDIA_LOG_CHANNEL', null),
+
+        'level' => [
+            'not_found'    => 'warning',
+            'error'        => 'error',
+            'memory_limit' => 'notice',
+        ],
+    ],
+],
 ```
 
-Possible `data-media-toolkit-reason` values:
-- `memory-limit` — optimization skipped proactively
-- `optimization-error` — optimization failed at runtime
+**Override via `.env`:**
+
+```env
+MEDIA_LOGGING_ENABLED=true
+MEDIA_LOG_CHANNEL=daily     # optional dedicated channel
+```
+
+### Failure Registry
+
+Failed images are persisted to `storage/media-toolkit/failures.json` so you can retry them later without re-deploying:
+
+```json
+{
+  "resources/images/hero.jpg": {
+    "reason": "memory_limit",
+    "count": 3,
+    "first_occurred": "2026-02-22T12:00:00+00:00",
+    "last_occurred":  "2026-02-22T12:05:00+00:00",
+    "params": {
+      "display_width": 800,
+      "format": "webp",
+      "quality": 80,
+      "operations_fingerprint": "d41d8cd9...",
+      "single_only": true
+    }
+  }
+}
+```
+
+### `media:process-pending` Command
+
+Retry all registered failures with an unlimited memory limit (useful for processing large images that were bypassed at request time due to GD memory constraints):
+
+```bash
+# List all pending failures
+php artisan media:process-pending --list
+
+# Attempt offline generation (unlimited memory by default)
+php artisan media:process-pending
+
+# Use a custom memory limit
+php artisan media:process-pending --memory=512M
+
+# Clear the registry
+php artisan media:process-pending --clear
+```
+
+> **Note:** The command regenerates the base resize/format variant. Operations (filters, watermarks) cannot be reproduced from the fingerprint alone — a warning is shown for entries with non-trivial operation chains.
 
 ---
 
@@ -653,7 +769,7 @@ Possible `data-media-toolkit-reason` values:
 | Config key `defaults.*` | `config('media-toolkit.defaults.*')` | `config('media-toolkit.image.defaults.*')` |
 | Artisan: clear cache | `media:img-clear` | `media:cache-clear` |
 | Artisan: warm cache | `media:img-warm` | `media:cache-warm` |
-| Error comment prefix | `IMG ERROR:` | `MEDIA ERROR:` |
+| Error behavior | env-based (empty string / HTML comment) | configurable `placeholder` / `broken` / `exception` |
 
 **Migration steps:**
 
@@ -710,7 +826,48 @@ All notable changes are documented in the [CHANGELOG](CHANGELOG.md).
 
 ## 🔒 Security
 
-If you discover a security vulnerability, please send an email to [security@laraextend.dev](mailto:security@laraextend.dev) instead of creating a public issue.
+### Built-in Input Validation
+
+Every source path and watermark path is validated before any filesystem access occurs. The following are rejected with a `MediaBuilderException`:
+
+| Threat | Example | Check |
+|---|---|---|
+| Directory traversal | `../../etc/passwd` | `..` in any path segment |
+| Null byte injection | `image.jpg\0.php` | `\x00` in path |
+| Log injection (CRLF) | `image.jpg\nFAKE_LOG` | `\r` / `\n` in path |
+| Disallowed file type | `config/database.php` | Extension whitelist |
+
+**Allowed image extensions:** `jpg`, `jpeg`, `png`, `gif`, `webp`, `avif`, `bmp`, `tiff`, `tif`
+
+```php
+// All of these throw MediaBuilderException:
+Media::image('../../etc/passwd')->html();            // traversal
+Media::image("logo.jpg\nINJECTED")->html();          // CRLF
+Media::image('config/database.php')->html();          // disallowed extension
+Media::image('resources/img.svg')->html();            // SVG excluded (scripting risk)
+
+Media::image($src)->watermark('/../../etc/shadow')->html();   // traversal in watermark
+Media::image($src)->watermark('http://x.com/../../etc')->html(); // traversal in URL
+```
+
+### Watermark Path Confinement
+
+Watermark sources are validated against their respective root directories:
+- **Relative paths** → must resolve within `base_path()`
+- **Web paths** (`/...`) → must resolve within `public_path()`
+- **HTTP(S) URLs** → extracted URL path must resolve within `public_path()`
+
+### Memory Safety (GD)
+
+When the GD driver estimates that processing would exceed the PHP memory limit, the image is never loaded — preventing fatal OOM errors. Image dimensions from EXIF metadata are capped at 65 535 px per axis to prevent integer overflow through adversarially crafted image headers.
+
+### Developer Responsibility
+
+The package validates paths structurally. It does **not** enforce which directories developers may use as image sources. If you accept image paths from user input, ensure the input is validated by your application before passing it to `Media::image()`.
+
+### Reporting Vulnerabilities
+
+If you discover a security issue, please send an email to [security@laraextend.dev](mailto:security@laraextend.dev) instead of creating a public issue.
 
 ---
 

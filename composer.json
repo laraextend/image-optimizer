@@ -22,7 +22,7 @@
         "cache",
         "performance"
     ],
-    "homepage": "https://github.com/laraextend/image-optimizer",
+    "homepage": "https://github.com/laraextend/media-toolkit",
     "license": "MIT",
     "type": "library",
     "authors": [

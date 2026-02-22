@@ -273,8 +273,63 @@ class ImageHtmlRenderer
     }
 
     /**
+     * Build an SVG placeholder <img> as a data URI.
+     *
+     * Used when 'placeholder' mode is configured for on_not_found or on_error.
+     * The image is fully self-contained (no external request) and renders a
+     * gray rectangle with a centered text label.
+     *
+     * @param  int|null $width    Target width in pixels (defaults to 400)
+     * @param  int|null $height   Target height in pixels (defaults to 300)
+     * @param  string   $text     Label drawn in the center (e.g. "Image not available")
+     * @param  string   $bgColor  Background hex color
+     * @param  string   $alt      <img alt> value; falls back to $text when empty
+     */
+    public function buildPlaceholderImg(
+        ?int   $width,
+        ?int   $height,
+        string $text,
+        string $bgColor = '#94a3b8',
+        string $alt     = '',
+    ): string {
+        $w        = $width  ?? 400;
+        $h        = $height ?? 300;
+        $fontSize = max(12, min(18, (int) round($w / 22)));
+
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' . $w . '" height="' . $h . '">'
+             . '<rect width="100%" height="100%" fill="' . htmlspecialchars($bgColor, ENT_QUOTES) . '"/>'
+             . '<text x="50%" y="50%" font-family="system-ui,sans-serif" font-size="' . $fontSize . '" '
+             . 'fill="#ffffff" text-anchor="middle" dominant-baseline="middle">'
+             . htmlspecialchars($text, ENT_QUOTES)
+             . '</text>'
+             . '</svg>';
+
+        $dataUri = 'data:image/svg+xml;base64,' . base64_encode($svg);
+
+        return '<img src="' . $dataUri . '" width="' . $w . '" height="' . $h
+             . '" alt="' . htmlspecialchars($alt ?: $text, ENT_QUOTES) . '">';
+    }
+
+    /**
+     * Build a broken-image <img> tag.
+     *
+     * The src intentionally points to a non-existent URL so the browser
+     * renders its native broken-image icon — useful during development.
+     *
+     * @param  string $src  The original (non-existing) source path or URL
+     * @param  string $alt  <img alt> value
+     */
+    public function buildBrokenImg(string $src, string $alt = ''): string
+    {
+        return '<img src="' . htmlspecialchars($src, ENT_QUOTES)
+             . '" alt="' . htmlspecialchars($alt, ENT_QUOTES) . '">';
+    }
+
+    /**
      * Return an error string appropriate for the current environment.
      * Local: HTML comment. Production: empty string.
+     *
+     * @deprecated  Use buildPlaceholderImg() or buildBrokenImg() via ImageBuilder config instead.
      */
     public function error(string $src): string
     {

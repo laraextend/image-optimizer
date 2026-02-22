@@ -190,6 +190,14 @@ class ImageProcessor
         int $targetWidth,
         int $targetHeight,
     ): int {
+        // Cap each dimension to prevent integer overflow on adversarially crafted
+        // image metadata that reports unrealistically large dimensions.
+        $maxDimension = 65535;
+        $sourceWidth  = min($sourceWidth,  $maxDimension);
+        $sourceHeight = min($sourceHeight, $maxDimension);
+        $targetWidth  = min($targetWidth,  $maxDimension);
+        $targetHeight = min($targetHeight, $maxDimension);
+
         $bytesPerPixel = 4;
         $sourceBuffer  = $sourceWidth  * $sourceHeight  * $bytesPerPixel * 2;
         $targetBuffer  = $targetWidth  * $targetHeight  * $bytesPerPixel * 2;
